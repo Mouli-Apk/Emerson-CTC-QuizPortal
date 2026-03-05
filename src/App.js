@@ -28,23 +28,23 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const TEAM_MEMBERS = [
-  { id: "VK001", name: "Vasanthakumar" },
-  { id: "MP002", name: "Mugilan" },
-  { id: "CU003", name: "Cibi" },
-  { id: "MK004", name: "Moulish Kumar" },
-  { id: "RR005", name: "Rahul" },
-  { id: "EL006", name: "Elamparithi" },
-  { id: "GR007", name: "Goutham" },
-  { id: "SR008", name: "SriRagahvendar" },
-  { id: "TS009", name: "Sarath" },
-  { id: "VS010", name: "Velraj" },
-  { id: "PM011", name: "Prasath" },
-  { id: "HR012", name: "Heyram" },
-  { id: "HN013", name: "Hemandh" },
-  { id: "SD014", name: "Sridhar" },
-  { id: "KK015", name: "Kumara Kannan" },
-  { id: "KD016", name: "Kesavan" },
-  { id: "VM019", name: "Vignesh" },
+  { id: "VK001", name: "Vasanthakumar N" },
+  { id: "E1550481", name: "Mugilan P" },
+  { id: "E1550478", name: "Cibi U" },
+  { id: "E1550484", name: "Moulish Kumar R" },
+  { id: "RR005", name: "Rahul R" },
+  { id: "E1552208", name: "Elamparithi K" },
+  { id: "E1422291", name: "Goutham Ram R" },
+  { id: "E1557751", name: "SriRagaventhiran S" },
+  { id: "E1553691", name: "Sarathkumar T" },
+  { id: "E1550955", name: "Velraj S" },
+  { id: "E1551617", name: "Prasath PM" },
+  { id: "E1470957", name: "Heyram G" },
+  { id: "E1552207", name: "Hemandh N" },
+  { id: "E1550485", name: "Sridhar D" },
+  { id: "E1550475", name: "Kumara Kannan M" },
+  { id: "E1551612", name: "Kesavan" },
+  { id: "E1552209", name: "Vignesh" },
 ];
 
 // Password complexity: min 6 chars, 1 uppercase, 1 symbol
@@ -54,6 +54,16 @@ const validatePassword = (pw) => {
   if (!/[A-Z]/.test(pw)) errors.push("At least 1 uppercase letter");
   if (!/[^a-zA-Z0-9]/.test(pw)) errors.push("At least 1 symbol (e.g. @, #, !)");
   return errors;
+};
+
+// SHA-256 via browser Web Crypto API — no library needed
+// Plaintext password never reaches Firestore; only the hash is stored
+const hashPassword = async (pw) => {
+  const encoded = new TextEncoder().encode(pw);
+  const buf = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 };
 
 const STYLES = `
@@ -466,7 +476,8 @@ export default function App() {
     try {
       const snap = await getDoc(doc(db, "users", foundMember.id));
       const data = snap.data();
-      if (data.password === password) {
+      const hashed = await hashPassword(password);
+      if (data.password === hashed) {
         setUser({ id: foundMember.id, ...data });
         localStorage.setItem("npd_portal_id", foundMember.id);
         setView("home");
@@ -493,9 +504,10 @@ export default function App() {
     }
     setAuthLoading(true);
     try {
+      const hashed = await hashPassword(password);
       const profile = {
         name: foundMember.name,
-        password,
+        password: hashed,
         role: foundMember.id === "MK004" ? "admin" : "user",
       };
       await setDoc(doc(db, "users", foundMember.id), profile);
@@ -803,7 +815,7 @@ export default function App() {
                       fontFamily: "'DM Mono',monospace",
                     }}
                   >
-                    TEAM PORTAL
+                    Team Portal
                   </div>
                 </div>
               </div>
@@ -857,11 +869,11 @@ export default function App() {
                           marginBottom: 20,
                         }}
                       >
-                        Enter your Employee ID to continue
+                        Enter your Team ID to continue
                       </div>
                       <input
                         className={`field${authError ? " error" : ""}`}
-                        placeholder="Employee ID"
+                        placeholder="Team ID (e.g. MK004)"
                         value={authCode}
                         onChange={(e) => {
                           setAuthCode(e.target.value);
@@ -2331,33 +2343,62 @@ export default function App() {
                             {count} tests · {pts} pts
                           </div>
                         </div>
-                        <button
-                          className="btn-ghost"
-                          onClick={() => {
-                            const hist = results.filter(
-                              (r) => r.userId === m.id
-                            );
-                            const csv =
-                              `Date,Quiz,Score,Total\n` +
-                              hist
-                                .map(
-                                  (r) =>
-                                    `${new Date(
-                                      r.submittedAt.seconds * 1000
-                                    ).toLocaleDateString()},${r.quizTitle},${
-                                      r.score
-                                    },${r.total}`
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            className="btn-ghost"
+                            onClick={() => {
+                              const hist = results.filter(
+                                (r) => r.userId === m.id
+                              );
+                              const csv =
+                                `Date,Quiz,Score,Total\n` +
+                                hist
+                                  .map(
+                                    (r) =>
+                                      `${new Date(
+                                        r.submittedAt.seconds * 1000
+                                      ).toLocaleDateString()},${r.quizTitle},${
+                                        r.score
+                                      },${r.total}`
+                                  )
+                                  .join("\n");
+                              const b = new Blob([csv], { type: "text/csv" });
+                              const a = document.createElement("a");
+                              a.href = URL.createObjectURL(b);
+                              a.download = `${m.name}.csv`;
+                              a.click();
+                            }}
+                          >
+                            CSV
+                          </button>
+                          <button
+                            style={{
+                              background: "none",
+                              border: "1px solid rgba(239,68,68,0.4)",
+                              color: "var(--red)",
+                              padding: "8px 12px",
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              letterSpacing: "0.04em",
+                            }}
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `Reset password for ${m.name}? They will create a new one on next login. Quiz history is NOT affected.`
                                 )
-                                .join("\n");
-                            const b = new Blob([csv], { type: "text/csv" });
-                            const a = document.createElement("a");
-                            a.href = URL.createObjectURL(b);
-                            a.download = `${m.name}.csv`;
-                            a.click();
-                          }}
-                        >
-                          CSV
-                        </button>
+                              )
+                                return;
+                              await deleteDoc(doc(db, "users", m.id));
+                              alert(
+                                `${m.name}'s password reset. Quiz history is intact.`
+                              );
+                            }}
+                          >
+                            Reset PW
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
