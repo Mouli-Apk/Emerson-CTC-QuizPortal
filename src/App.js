@@ -508,7 +508,7 @@ export default function App() {
       const profile = {
         name: foundMember.name,
         password: hashed,
-        role: foundMember.id === "MK004" ? "admin" : "user",
+        role: foundMember.id === "E1550484" ? "admin" : "user",
       };
       await setDoc(doc(db, "users", foundMember.id), profile);
       localStorage.setItem("npd_portal_id", foundMember.id);
@@ -873,7 +873,7 @@ export default function App() {
                       </div>
                       <input
                         className={`field${authError ? " error" : ""}`}
-                        placeholder="Team ID (e.g. MK004)"
+                        placeholder="Employee ID"
                         value={authCode}
                         onChange={(e) => {
                           setAuthCode(e.target.value);
@@ -1273,7 +1273,7 @@ export default function App() {
                       />
                     </div>
                   ))}
-                  {user.id === "MK004" && (
+                  {user.id === "E1550484" && (
                     <div
                       className="card-hover"
                       onClick={() => setView("admin")}
@@ -1591,7 +1591,7 @@ export default function App() {
                     const hasTaken =
                       results.some(
                         (r) => r.userId === user.id && r.quizId === q.id
-                      ) || user.id === "MK004";
+                      ) || user.id === "E1550484";
                     return (
                       <div
                         key={q.id}
@@ -2094,7 +2094,7 @@ export default function App() {
               )}
 
               {/* ── ADMIN ── */}
-              {view === "admin" && user.id === "MK004" && (
+              {view === "admin" && user.id === "E1550484" && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 20 }}>
                     <div
