@@ -10,6 +10,9 @@ import {
   doc,
   setDoc,
   getDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -44,6 +47,15 @@ const TEAM_MEMBERS = [
   { id: "VM019", name: "Vignesh" },
 ];
 
+// Password complexity: min 6 chars, 1 uppercase, 1 symbol
+const validatePassword = (pw) => {
+  const errors = [];
+  if (pw.length < 6) errors.push("At least 6 characters");
+  if (!/[A-Z]/.test(pw)) errors.push("At least 1 uppercase letter");
+  if (!/[^a-zA-Z0-9]/.test(pw)) errors.push("At least 1 symbol (e.g. @, #, !)");
+  return errors;
+};
+
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap');
 
@@ -75,45 +87,67 @@ const STYLES = `
   ::-webkit-scrollbar-thumb { background: var(--teal-glow); border-radius: 2px; }
 
   .pulse { animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
   .fadeIn { animation: fadeIn 0.35s ease forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+
+  .slideIn { animation: slideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  @keyframes slideIn { from{opacity:0;transform:translateX(24px);} to{opacity:1;transform:translateX(0);} }
 
   .card-hover { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
   .card-hover:hover { transform: translateY(-2px); border-color: var(--border-teal) !important; box-shadow: 0 8px 32px rgba(0,212,184,0.1); }
 
   .btn-primary {
-    width: 100%; padding: 14px 20px; background: var(--teal); color: var(--navy);
-    border: none; border-radius: 10px; font-weight: 700; font-size: 14px;
-    letter-spacing: 0.04em; cursor: pointer; transition: background 0.2s, transform 0.15s;
-    text-transform: uppercase;
+    width:100%; padding:14px 20px; background:var(--teal); color:var(--navy);
+    border:none; border-radius:10px; font-weight:700; font-size:14px;
+    letter-spacing:0.04em; cursor:pointer; transition:background 0.2s, transform 0.15s;
+    text-transform:uppercase;
   }
-  .btn-primary:hover { background: var(--teal2); transform: translateY(-1px); }
+  .btn-primary:hover { background:var(--teal2); transform:translateY(-1px); }
+  .btn-primary:disabled { background:#2a3a4a; color:#4a5568; cursor:not-allowed; transform:none; }
 
   .btn-ghost {
-    background: none; border: 1px solid var(--border-teal); color: var(--teal);
-    padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
-    cursor: pointer; letter-spacing: 0.05em; transition: background 0.2s;
+    background:none; border:1px solid var(--border-teal); color:var(--teal);
+    padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600;
+    cursor:pointer; letter-spacing:0.05em; transition:background 0.2s;
   }
-  .btn-ghost:hover { background: var(--teal-dim); }
+  .btn-ghost:hover { background:var(--teal-dim); }
+
+  .btn-back {
+    background:none; border:none; color:var(--text-faint); font-size:12px;
+    font-weight:600; cursor:pointer; letter-spacing:0.05em; padding:0;
+    display:flex; align-items:center; gap:6px; margin-bottom:18px;
+    transition:color 0.2s;
+  }
+  .btn-back:hover { color:var(--teal); }
 
   .field {
-    width: 100%; background: var(--navy3); border: 1px solid var(--border);
-    color: var(--text); padding: 13px 16px; border-radius: 10px; font-size: 14px;
-    margin-bottom: 12px; outline: none; transition: border-color 0.2s;
+    width:100%; background:var(--navy3); border:1px solid var(--border);
+    color:var(--text); padding:13px 16px; border-radius:10px; font-size:14px;
+    margin-bottom:12px; outline:none; transition:border-color 0.2s;
   }
-  .field:focus { border-color: var(--border-teal); }
-  .field::placeholder { color: var(--text-faint); }
+  .field:focus { border-color:var(--border-teal); }
+  .field::placeholder { color:var(--text-faint); }
+  .field.error { border-color:var(--red); }
 
   .option-btn {
-    width: 100%; padding: 13px 16px; margin-bottom: 8px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--navy3); color: var(--text);
-    text-align: left; cursor: pointer; font-size: 14px; font-family: 'Sora', sans-serif;
-    transition: border-color 0.2s, background 0.2s;
+    width:100%; padding:13px 16px; margin-bottom:8px; border-radius:10px;
+    border:1px solid var(--border); background:var(--navy3); color:var(--text);
+    text-align:left; cursor:pointer; font-size:14px; font-family:'Sora',sans-serif;
+    transition:border-color 0.2s, background 0.2s;
   }
-  .option-btn:hover { border-color: var(--border-teal); background: var(--teal-dim); }
-  .option-btn.selected { border-color: var(--teal); background: var(--teal-dim); color: var(--teal); font-weight: 600; }
+  .option-btn:hover { border-color:var(--border-teal); background:var(--teal-dim); }
+  .option-btn.selected { border-color:var(--teal); background:var(--teal-dim); color:var(--teal); font-weight:600; }
+
+  .pw-rule { font-size:11px; padding:3px 0; display:flex; align-items:center; gap:6px; }
+  .pw-rule.pass { color:var(--green); }
+  .pw-rule.fail { color:var(--text-faint); }
+
+  .news-chip {
+    font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    padding:2px 8px; border-radius:20px; font-family:'DM Mono',monospace;
+  }
 `;
 
 function Avatar({ name, size = 36 }) {
@@ -140,7 +174,7 @@ function Avatar({ name, size = 36 }) {
         fontWeight: 700,
         color,
         flexShrink: 0,
-        fontFamily: "'DM Mono', monospace",
+        fontFamily: "'DM Mono',monospace",
         letterSpacing: "-0.02em",
       }}
     >
@@ -191,7 +225,7 @@ function StatChip({ label, value, accent }) {
           fontSize: 20,
           fontWeight: 700,
           color: accent || "var(--teal)",
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "'DM Mono',monospace",
         }}
       >
         {value}
@@ -211,18 +245,136 @@ function StatChip({ label, value, accent }) {
   );
 }
 
+// ── NEWS CATEGORY CONFIG ──
+const NEWS_TYPES = {
+  update: { label: "Update", fg: "#00d4b8", bg: "rgba(0,212,184,0.1)" },
+  announcement: {
+    label: "Announce",
+    fg: "#a78bfa",
+    bg: "rgba(167,139,250,0.1)",
+  },
+  milestone: { label: "Milestone", fg: "#22c55e", bg: "rgba(34,197,94,0.1)" },
+  alert: { label: "Alert", fg: "#ef4444", bg: "rgba(239,68,68,0.1)" },
+};
+
+function NewsCard({ item, onDelete, onEdit, isAdmin }) {
+  const type = NEWS_TYPES[item.type] || NEWS_TYPES.update;
+  return (
+    <div
+      style={{
+        background: "var(--panel)",
+        border: "1px solid var(--border)",
+        borderRadius: 14,
+        padding: "16px 20px",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
+        <span
+          className="news-chip"
+          style={{
+            background: type.bg,
+            color: type.fg,
+            border: `1px solid ${type.fg}44`,
+          }}
+        >
+          {type.label}
+        </span>
+        {item.pinned && (
+          <span
+            className="news-chip"
+            style={{
+              background: "rgba(245,158,11,0.1)",
+              color: "var(--amber)",
+              border: "1px solid rgba(245,158,11,0.3)",
+            }}
+          >
+            📌 Pinned
+          </span>
+        )}
+        {isAdmin && (
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+            <button
+              onClick={() => onEdit(item)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-faint)",
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "2px 6px",
+              }}
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => onDelete(item.id)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--red)",
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "2px 6px",
+              }}
+            >
+              🗑
+            </button>
+          </div>
+        )}
+      </div>
+      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+        {item.title}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.6 }}>
+        {item.body}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  // ── AUTH STATE ──
+  const [loginStep, setLoginStep] = useState("id"); // "id" | "password" | "create"
+  const [authCode, setAuthCode] = useState("");
+  const [foundMember, setFoundMember] = useState(null);
+  const [existingUser, setExistingUser] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwErrors, setPwErrors] = useState([]);
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // ── APP STATE ──
   const [user, setUser] = useState(null);
   const [view, setView] = useState("home");
   const [loading, setLoading] = useState(true);
-  const [authCode, setAuthCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [isFirstLogin, setIsFirstLogin] = useState(false);
   const [quizzes, setQuizzes] = useState([]);
   const [results, setResults] = useState([]);
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
   const [archiveQuiz, setArchiveQuiz] = useState(null);
+
+  // ── NEWS STATE ──
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [editingNews, setEditingNews] = useState(null); // null | news item
+  const [newsForm, setNewsForm] = useState({
+    title: "",
+    body: "",
+    type: "update",
+    pinned: false,
+  });
+  const [showNewsForm, setShowNewsForm] = useState(false);
+
+  // ── QUIZ BUILDER STATE ──
   const [newQuizTitle, setNewQuizTitle] = useState("");
   const [category, setCategory] = useState("Mechanical");
   const [deadline, setDeadline] = useState("");
@@ -234,7 +386,21 @@ export default function App() {
   const [correctIdx, setCorrectIdx] = useState(0);
   const [ansKey, setAnsKey] = useState("");
 
-  // Session persistence
+  // ── FETCH NEWS (public, no auth required) ──
+  const fetchNews = async () => {
+    setNewsLoading(true);
+    try {
+      const snap = await getDocs(
+        query(collection(db, "News"), orderBy("createdAt", "desc"))
+      );
+      setNews(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error("News fetch error:", e);
+    }
+    setNewsLoading(false);
+  };
+
+  // ── SESSION PERSISTENCE ──
   useEffect(() => {
     const checkSession = async () => {
       const savedId = localStorage.getItem("npd_portal_id");
@@ -251,10 +417,11 @@ export default function App() {
       }
       setLoading(false);
     };
+    fetchNews();
     checkSession();
   }, []);
 
-  // Data sync
+  // ── DATA SYNC ──
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
@@ -271,40 +438,77 @@ export default function App() {
     }
   }, [user, view, activeQuiz]);
 
-  const handleAuth = async () => {
-    const id = authCode.toUpperCase();
+  // ── STEP 1: LOOK UP TEAM ID ──
+  const handleIdSubmit = async () => {
+    setAuthError("");
+    const id = authCode.toUpperCase().trim();
     const member = TEAM_MEMBERS.find((m) => m.id === id);
-    if (!member) return alert("ID not recognized");
-    const snap = await getDoc(doc(db, "users", id));
-    if (!snap.exists()) {
-      setUser({ id, name: member.name });
-      setIsFirstLogin(true);
-    } else {
+    if (!member) {
+      setAuthError("Team ID not found. Check your ID and try again.");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const snap = await getDoc(doc(db, "users", id));
+      setFoundMember(member);
+      setExistingUser(snap.exists());
+      setLoginStep(snap.exists() ? "password" : "create");
+    } catch (e) {
+      setAuthError("Connection error. Try again.");
+    }
+    setAuthLoading(false);
+  };
+
+  // ── STEP 2A: LOGIN WITH PASSWORD ──
+  const handleLogin = async () => {
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const snap = await getDoc(doc(db, "users", foundMember.id));
       const data = snap.data();
       if (data.password === password) {
-        setUser({ id, ...data });
-        localStorage.setItem("npd_portal_id", id);
+        setUser({ id: foundMember.id, ...data });
+        localStorage.setItem("npd_portal_id", foundMember.id);
         setView("home");
       } else {
-        alert("Incorrect Password");
+        setAuthError("Incorrect password. Try again.");
       }
+    } catch (e) {
+      setAuthError("Connection error. Try again.");
     }
+    setAuthLoading(false);
   };
 
-  const finalizeSetup = async () => {
-    if (password.length < 4) return alert("Min 4 characters");
-    const profile = {
-      name: user.name,
-      password,
-      role: user.id === "MK004" ? "admin" : "user",
-    };
-    await setDoc(doc(db, "users", user.id), profile);
-    localStorage.setItem("npd_portal_id", user.id);
-    setUser({ id: user.id, ...profile });
-    setIsFirstLogin(false);
-    setView("home");
+  // ── STEP 2B: CREATE PASSWORD ──
+  const handleCreatePassword = async () => {
+    setAuthError("");
+    const errors = validatePassword(password);
+    if (errors.length > 0) {
+      setPwErrors(errors);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthError("Passwords do not match.");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const profile = {
+        name: foundMember.name,
+        password,
+        role: foundMember.id === "MK004" ? "admin" : "user",
+      };
+      await setDoc(doc(db, "users", foundMember.id), profile);
+      localStorage.setItem("npd_portal_id", foundMember.id);
+      setUser({ id: foundMember.id, ...profile });
+      setView("home");
+    } catch (e) {
+      setAuthError("Failed to create account. Try again.");
+    }
+    setAuthLoading(false);
   };
 
+  // ── QUIZ SUBMIT ──
   const submitTest = async () => {
     let score = 0;
     activeQuiz.questions.forEach((q, i) => {
@@ -330,6 +534,7 @@ export default function App() {
     setView("home");
   };
 
+  // ── QUIZ PUBLISH ──
   const publishQuiz = async () => {
     if (!newQuizTitle.trim()) return alert("Enter a quiz title");
     if (addedQuestions.length === 0) return alert("Add at least one question");
@@ -347,12 +552,54 @@ export default function App() {
     setNewQuizTitle("");
   };
 
+  // ── NEWS CRUD ──
+  const saveNews = async () => {
+    if (!newsForm.title.trim() || !newsForm.body.trim())
+      return alert("Fill in title and body");
+    if (editingNews) {
+      await updateDoc(doc(db, "News", editingNews.id), { ...newsForm });
+    } else {
+      await addDoc(collection(db, "News"), {
+        ...newsForm,
+        createdAt: serverTimestamp(),
+      });
+    }
+    setShowNewsForm(false);
+    setEditingNews(null);
+    setNewsForm({ title: "", body: "", type: "update", pinned: false });
+    fetchNews();
+  };
+
+  const deleteNews = async (id) => {
+    if (!window.confirm("Delete this news item?")) return;
+    await deleteDoc(doc(db, "News", id));
+    fetchNews();
+  };
+
+  const startEditNews = (item) => {
+    setEditingNews(item);
+    setNewsForm({
+      title: item.title,
+      body: item.body,
+      type: item.type || "update",
+      pinned: !!item.pinned,
+    });
+    setShowNewsForm(true);
+  };
+
   const logout = () => {
     localStorage.removeItem("npd_portal_id");
     setUser(null);
+    setLoginStep("id");
+    setAuthCode("");
+    setPassword("");
+    setConfirmPassword("");
+    setFoundMember(null);
+    setAuthError("");
     setView("home");
   };
 
+  // ── LOADING SCREEN ──
   if (loading)
     return (
       <>
@@ -371,7 +618,7 @@ export default function App() {
               className="pulse"
               style={{
                 color: "var(--teal)",
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: "'DM Mono',monospace",
                 fontSize: 13,
                 letterSpacing: "0.1em",
               }}
@@ -385,6 +632,9 @@ export default function App() {
 
   const myResults = results.filter((r) => r.userId === user?.id);
   const myScore = myResults.reduce((s, c) => s + (c.score || 0), 0);
+  const sortedNews = [...news].sort(
+    (a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
+  );
 
   return (
     <>
@@ -436,7 +686,7 @@ export default function App() {
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   color: "var(--teal)",
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: "'DM Mono',monospace",
                 }}
               >
                 CTC PORTAL
@@ -469,7 +719,7 @@ export default function App() {
                 }}
                 alt="Emerson"
               />
-              {user && !isFirstLogin && (
+              {user && (
                 <button className="btn-ghost" onClick={logout}>
                   LOGOUT
                 </button>
@@ -481,8 +731,10 @@ export default function App() {
         <div
           style={{ maxWidth: 800, margin: "auto", padding: "24px 20px 100px" }}
         >
-          {/* ── AUTH ── */}
-          {(!user || isFirstLogin) && (
+          {/* ════════════════════════════════
+              AUTH SECTION (not logged in)
+          ════════════════════════════════ */}
+          {!user && (
             <div
               className="fadeIn"
               style={{
@@ -492,12 +744,13 @@ export default function App() {
                 flexWrap: "wrap",
               }}
             >
+              {/* Left: hero image */}
               <div
                 style={{
-                  flex: "1 1 280px",
+                  flex: "1 1 260px",
                   borderRadius: 20,
                   overflow: "hidden",
-                  height: 480,
+                  height: 520,
                   position: "relative",
                   border: "1px solid var(--border)",
                 }}
@@ -534,7 +787,7 @@ export default function App() {
                       color: "var(--teal)",
                       letterSpacing: "0.15em",
                       textTransform: "uppercase",
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "'DM Mono',monospace",
                       marginBottom: 8,
                     }}
                   >
@@ -549,12 +802,14 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Center: login card */}
               <div
                 style={{
-                  flex: "1 1 240px",
+                  flex: "1 1 220px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 16,
+                  gap: 0,
                 }}
               >
                 <div
@@ -563,79 +818,329 @@ export default function App() {
                     border: "1px solid var(--border)",
                     borderRadius: 20,
                     padding: 28,
+                    marginBottom: 16,
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      letterSpacing: "0.1em",
-                      color: "var(--teal)",
-                      textTransform: "uppercase",
-                      fontFamily: "'DM Mono', monospace",
-                      marginBottom: 18,
-                    }}
-                  >
-                    {isFirstLogin ? "— Set Password" : "— Portal Access"}
-                  </div>
-                  {!isFirstLogin && (
-                    <input
-                      className="field"
-                      placeholder="Team ID (e.g. MK004)"
-                      onChange={(e) => setAuthCode(e.target.value)}
-                    />
+                  {/* ── STEP: ENTER ID ── */}
+                  {loginStep === "id" && (
+                    <div className="slideIn">
+                      <div
+                        style={{
+                          fontSize: 11,
+                          letterSpacing: "0.1em",
+                          color: "var(--teal)",
+                          textTransform: "uppercase",
+                          fontFamily: "'DM Mono',monospace",
+                          marginBottom: 6,
+                        }}
+                      >
+                        — Portal Access
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 700,
+                          marginBottom: 4,
+                        }}
+                      >
+                        Welcome
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text-dim)",
+                          marginBottom: 20,
+                        }}
+                      >
+                        Enter your Team ID to continue
+                      </div>
+                      <input
+                        className={`field${authError ? " error" : ""}`}
+                        placeholder="Team ID (e.g. MK004)"
+                        value={authCode}
+                        onChange={(e) => {
+                          setAuthCode(e.target.value);
+                          setAuthError("");
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && handleIdSubmit()}
+                      />
+                      {authError && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--red)",
+                            marginBottom: 10,
+                            marginTop: -8,
+                          }}
+                        >
+                          {authError}
+                        </div>
+                      )}
+                      <button
+                        className="btn-primary"
+                        onClick={handleIdSubmit}
+                        disabled={authLoading || !authCode.trim()}
+                      >
+                        {authLoading ? "Checking..." : "Continue →"}
+                      </button>
+                    </div>
                   )}
-                  <input
-                    className="field"
-                    type="password"
-                    placeholder="Password"
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    className="btn-primary"
-                    onClick={isFirstLogin ? finalizeSetup : handleAuth}
-                  >
-                    {isFirstLogin ? "Activate Account" : "Enter Portal"}
-                  </button>
+
+                  {/* ── STEP: ENTER PASSWORD ── */}
+                  {loginStep === "password" && (
+                    <div className="slideIn">
+                      <button
+                        className="btn-back"
+                        onClick={() => {
+                          setLoginStep("id");
+                          setPassword("");
+                          setAuthError("");
+                        }}
+                      >
+                        ← Back
+                      </button>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          marginBottom: 20,
+                        }}
+                      >
+                        <Avatar name={foundMember.name} size={40} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15 }}>
+                            {foundMember.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-faint)",
+                              fontFamily: "'DM Mono',monospace",
+                            }}
+                          >
+                            {foundMember.id}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text-dim)",
+                          marginBottom: 14,
+                        }}
+                      >
+                        Enter your password
+                      </div>
+                      <input
+                        className={`field${authError ? " error" : ""}`}
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setAuthError("");
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                      />
+                      {authError && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--red)",
+                            marginBottom: 10,
+                            marginTop: -8,
+                          }}
+                        >
+                          {authError}
+                        </div>
+                      )}
+                      <button
+                        className="btn-primary"
+                        onClick={handleLogin}
+                        disabled={authLoading || !password}
+                      >
+                        {authLoading ? "Signing in..." : "Sign In"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── STEP: CREATE PASSWORD ── */}
+                  {loginStep === "create" && (
+                    <div className="slideIn">
+                      <button
+                        className="btn-back"
+                        onClick={() => {
+                          setLoginStep("id");
+                          setPassword("");
+                          setConfirmPassword("");
+                          setAuthError("");
+                          setPwErrors([]);
+                        }}
+                      >
+                        ← Back
+                      </button>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          marginBottom: 16,
+                        }}
+                      >
+                        <Avatar name={foundMember.name} size={40} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15 }}>
+                            {foundMember.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--green)",
+                              fontFamily: "'DM Mono',monospace",
+                            }}
+                          >
+                            New Account
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text-dim)",
+                          marginBottom: 14,
+                        }}
+                      >
+                        Create your account password
+                      </div>
+
+                      <input
+                        className="field"
+                        type="password"
+                        placeholder="Create password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setPwErrors([]);
+                          setAuthError("");
+                        }}
+                      />
+
+                      {/* Live password rules */}
+                      {password && (
+                        <div
+                          style={{
+                            background: "var(--navy3)",
+                            borderRadius: 10,
+                            padding: "10px 14px",
+                            marginBottom: 12,
+                            marginTop: -8,
+                          }}
+                        >
+                          {[
+                            {
+                              rule: "At least 6 characters",
+                              pass: password.length >= 6,
+                            },
+                            {
+                              rule: "At least 1 uppercase letter",
+                              pass: /[A-Z]/.test(password),
+                            },
+                            {
+                              rule: "At least 1 symbol (e.g. @, #, !)",
+                              pass: /[^a-zA-Z0-9]/.test(password),
+                            },
+                          ].map((r, i) => (
+                            <div
+                              key={i}
+                              className={`pw-rule ${r.pass ? "pass" : "fail"}`}
+                            >
+                              <span>{r.pass ? "✓" : "○"}</span> {r.rule}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <input
+                        className={`field${authError ? " error" : ""}`}
+                        type="password"
+                        placeholder="Confirm password"
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          setAuthError("");
+                        }}
+                      />
+                      {authError && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--red)",
+                            marginBottom: 10,
+                            marginTop: -8,
+                          }}
+                        >
+                          {authError}
+                        </div>
+                      )}
+
+                      <button
+                        className="btn-primary"
+                        onClick={handleCreatePassword}
+                        disabled={authLoading || !password || !confirmPassword}
+                      >
+                        {authLoading ? "Creating..." : "Create Account"}
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {[
-                  {
-                    title: "Echo-24 Prototype",
-                    body: "Evaluation session scheduled for Q2.",
-                  },
-                  {
-                    title: "Compliance Update",
-                    body: "New Material Compliance Guidelines live.",
-                  },
-                  {
-                    title: "ISO 9001 Achieved",
-                    body: "Lab Recertification milestone confirmed.",
-                  },
-                ].map((item, i) => (
+              </div>
+
+              {/* Right: dynamic news */}
+              <div
+                style={{
+                  flex: "1 1 200px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-faint)",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    fontFamily: "'DM Mono',monospace",
+                    marginBottom: 4,
+                  }}
+                >
+                  CTC Updates
+                </div>
+                {newsLoading && (
                   <div
-                    key={i}
-                    style={{
-                      background: "var(--panel)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 14,
-                      padding: "16px 20px",
-                    }}
+                    className="pulse"
+                    style={{ fontSize: 12, color: "var(--text-faint)" }}
                   >
-                    <div
-                      style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}
-                    >
-                      {item.title}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
-                      {item.body}
-                    </div>
+                    Loading news...
                   </div>
+                )}
+                {!newsLoading && sortedNews.length === 0 && (
+                  <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                    No news yet.
+                  </div>
+                )}
+                {sortedNews.map((item) => (
+                  <NewsCard key={item.id} item={item} isAdmin={false} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* ── LOGGED IN ── */}
-          {user && !isFirstLogin && (
+          {/* ════════════════════════════════
+              LOGGED IN SECTION
+          ════════════════════════════════ */}
+          {user && (
             <div className="fadeIn">
               {/* User strip */}
               <div
@@ -659,7 +1164,7 @@ export default function App() {
                     style={{
                       fontSize: 11,
                       color: "var(--text-faint)",
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "'DM Mono',monospace",
                       marginTop: 2,
                     }}
                   >
@@ -783,7 +1288,7 @@ export default function App() {
                               marginTop: 2,
                             }}
                           >
-                            Full team performance overview
+                            Team performance & news management
                           </div>
                         </div>
                         <div
@@ -792,7 +1297,7 @@ export default function App() {
                             fontSize: 10,
                             color: "var(--red)",
                             letterSpacing: "0.1em",
-                            fontFamily: "'DM Mono', monospace",
+                            fontFamily: "'DM Mono',monospace",
                             border: "1px solid rgba(239,68,68,0.3)",
                             padding: "4px 10px",
                             borderRadius: 20,
@@ -816,7 +1321,7 @@ export default function App() {
                         color: "var(--teal)",
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       Active Tests
@@ -856,7 +1361,7 @@ export default function App() {
                             style={{
                               fontSize: 10,
                               color: "var(--text-faint)",
-                              fontFamily: "'DM Mono', monospace",
+                              fontFamily: "'DM Mono',monospace",
                             }}
                           >
                             {q.author || "Lead"}
@@ -882,7 +1387,7 @@ export default function App() {
                             style={{
                               fontSize: 11,
                               color: "var(--red)",
-                              fontFamily: "'DM Mono', monospace",
+                              fontFamily: "'DM Mono',monospace",
                             }}
                           >
                             ⏱ {q.deadline || "No Limit"}
@@ -922,7 +1427,7 @@ export default function App() {
                         color: "var(--teal)",
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       {Object.keys(userAnswers).length}/
@@ -972,7 +1477,7 @@ export default function App() {
                         style={{
                           fontSize: 10,
                           color: "var(--text-faint)",
-                          fontFamily: "'DM Mono', monospace",
+                          fontFamily: "'DM Mono',monospace",
                           marginBottom: 10,
                         }}
                       >
@@ -1012,7 +1517,7 @@ export default function App() {
                           >
                             <span
                               style={{
-                                fontFamily: "'DM Mono', monospace",
+                                fontFamily: "'DM Mono',monospace",
                                 fontSize: 11,
                                 marginRight: 10,
                                 opacity: 0.5,
@@ -1054,7 +1559,7 @@ export default function App() {
                         color: "var(--amber)",
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       Gated Access
@@ -1104,7 +1609,7 @@ export default function App() {
                           <span
                             style={{
                               fontSize: 10,
-                              fontFamily: "'DM Mono', monospace",
+                              fontFamily: "'DM Mono',monospace",
                               letterSpacing: "0.07em",
                               color: hasTaken
                                 ? "var(--green)"
@@ -1124,16 +1629,7 @@ export default function App() {
               {archiveQuiz && (
                 <div className="fadeIn">
                   <button
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--teal)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      marginBottom: 16,
-                      padding: 0,
-                    }}
+                    className="btn-back"
                     onClick={() => setArchiveQuiz(null)}
                   >
                     ← Back
@@ -1158,7 +1654,7 @@ export default function App() {
                         style={{
                           fontSize: 10,
                           color: "var(--text-faint)",
-                          fontFamily: "'DM Mono', monospace",
+                          fontFamily: "'DM Mono',monospace",
                           marginBottom: 8,
                         }}
                       >
@@ -1202,7 +1698,7 @@ export default function App() {
                         color: "var(--green)",
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       Quiz Builder
@@ -1261,7 +1757,7 @@ export default function App() {
                         color: "var(--text-faint)",
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                         marginBottom: 14,
                       }}
                     >
@@ -1416,7 +1912,7 @@ export default function App() {
                         color: "#a78bfa",
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       Rankings
@@ -1474,7 +1970,7 @@ export default function App() {
                               style={{
                                 width: 28,
                                 textAlign: "center",
-                                fontFamily: "'DM Mono', monospace",
+                                fontFamily: "'DM Mono',monospace",
                                 fontSize: medal ? 16 : 12,
                                 color: "var(--text-faint)",
                               }}
@@ -1504,7 +2000,7 @@ export default function App() {
                             </div>
                             <div
                               style={{
-                                fontFamily: "'DM Mono', monospace",
+                                fontFamily: "'DM Mono',monospace",
                                 fontSize: 15,
                                 fontWeight: 700,
                                 color: i < 3 ? "var(--amber)" : "var(--text)",
@@ -1548,7 +2044,7 @@ export default function App() {
                           style={{
                             fontSize: 11,
                             color: "var(--text-faint)",
-                            fontFamily: "'DM Mono', monospace",
+                            fontFamily: "'DM Mono',monospace",
                             marginTop: 3,
                           }}
                         >
@@ -1559,7 +2055,7 @@ export default function App() {
                       </div>
                       <div
                         style={{
-                          fontFamily: "'DM Mono', monospace",
+                          fontFamily: "'DM Mono',monospace",
                           fontSize: 18,
                           fontWeight: 700,
                           color:
@@ -1583,14 +2079,14 @@ export default function App() {
               {/* ── ADMIN ── */}
               {view === "admin" && user.id === "MK004" && (
                 <div className="fadeIn">
-                  <div style={{ marginBottom: 18 }}>
+                  <div style={{ marginBottom: 20 }}>
                     <div
                       style={{
                         fontSize: 11,
                         color: "var(--red)",
                         letterSpacing: "0.1em",
                         textTransform: "uppercase",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       Admin
@@ -1598,8 +2094,200 @@ export default function App() {
                     <div
                       style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}
                     >
-                      Lead Hub — Audits
+                      Lead Hub
                     </div>
+                  </div>
+
+                  {/* ── NEWS MANAGEMENT ── */}
+                  <div
+                    style={{
+                      background: "var(--panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 18,
+                      padding: 24,
+                      marginBottom: 20,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--teal)",
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            fontFamily: "'DM Mono',monospace",
+                          }}
+                        >
+                          News Manager
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            marginTop: 2,
+                          }}
+                        >
+                          CTC Updates
+                        </div>
+                      </div>
+                      <button
+                        className="btn-ghost"
+                        onClick={() => {
+                          setShowNewsForm(!showNewsForm);
+                          setEditingNews(null);
+                          setNewsForm({
+                            title: "",
+                            body: "",
+                            type: "update",
+                            pinned: false,
+                          });
+                        }}
+                      >
+                        {showNewsForm ? "✕ Cancel" : "+ Add News"}
+                      </button>
+                    </div>
+
+                    {/* News form */}
+                    {showNewsForm && (
+                      <div
+                        className="slideIn"
+                        style={{
+                          background: "var(--navy3)",
+                          borderRadius: 14,
+                          padding: 18,
+                          marginBottom: 16,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--teal)",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            fontFamily: "'DM Mono',monospace",
+                            marginBottom: 12,
+                          }}
+                        >
+                          {editingNews ? "Edit News Item" : "New News Item"}
+                        </div>
+                        <input
+                          className="field"
+                          placeholder="Title"
+                          value={newsForm.title}
+                          onChange={(e) =>
+                            setNewsForm({ ...newsForm, title: e.target.value })
+                          }
+                        />
+                        <textarea
+                          className="field"
+                          placeholder="Body text..."
+                          rows={3}
+                          value={newsForm.body}
+                          onChange={(e) =>
+                            setNewsForm({ ...newsForm, body: e.target.value })
+                          }
+                          style={{ resize: "vertical" }}
+                        />
+                        <div
+                          style={{ display: "flex", gap: 10, marginBottom: 12 }}
+                        >
+                          <select
+                            className="field"
+                            style={{ flex: 1, marginBottom: 0 }}
+                            value={newsForm.type}
+                            onChange={(e) =>
+                              setNewsForm({ ...newsForm, type: e.target.value })
+                            }
+                          >
+                            <option value="update">Update</option>
+                            <option value="announcement">Announcement</option>
+                            <option value="milestone">Milestone</option>
+                            <option value="alert">Alert</option>
+                          </select>
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              fontSize: 13,
+                              color: "var(--text-dim)",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={newsForm.pinned}
+                              onChange={(e) =>
+                                setNewsForm({
+                                  ...newsForm,
+                                  pinned: e.target.checked,
+                                })
+                              }
+                              style={{ accentColor: "var(--amber)" }}
+                            />
+                            📌 Pin to top
+                          </label>
+                        </div>
+                        <button className="btn-primary" onClick={saveNews}>
+                          {editingNews ? "Update" : "Publish"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Existing news items with admin controls */}
+                    {newsLoading && (
+                      <div
+                        className="pulse"
+                        style={{ fontSize: 12, color: "var(--text-faint)" }}
+                      >
+                        Loading...
+                      </div>
+                    )}
+                    {!newsLoading && sortedNews.length === 0 && (
+                      <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                        No news items yet. Add one above.
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      {sortedNews.map((item) => (
+                        <NewsCard
+                          key={item.id}
+                          item={item}
+                          isAdmin={true}
+                          onDelete={deleteNews}
+                          onEdit={startEditNews}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── TEAM AUDITS ── */}
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--red)",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      fontFamily: "'DM Mono',monospace",
+                      marginBottom: 12,
+                    }}
+                  >
+                    Team Audits
                   </div>
                   {TEAM_MEMBERS.map((m) => {
                     const count = results.filter(
@@ -1631,7 +2319,7 @@ export default function App() {
                             style={{
                               fontSize: 11,
                               color: "var(--text-faint)",
-                              fontFamily: "'DM Mono', monospace",
+                              fontFamily: "'DM Mono',monospace",
                               marginTop: 2,
                             }}
                           >
@@ -1675,7 +2363,7 @@ export default function App() {
         </div>
 
         {/* ── BOTTOM NAV ── */}
-        {user && !isFirstLogin && (
+        {user && (
           <nav
             style={{
               position: "fixed",
