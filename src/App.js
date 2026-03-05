@@ -747,7 +747,7 @@ export default function App() {
               {/* Left: hero image */}
               <div
                 style={{
-                  flex: "1 1 260px",
+                  flex: "1 1 360px",
                   borderRadius: 20,
                   overflow: "hidden",
                   height: 520,
@@ -756,12 +756,12 @@ export default function App() {
                 }}
               >
                 <img
-                  src="https://i.pinimg.com/736x/66/60/8a/66608af3f7f00a5c1e6f24a8d8fd7911.jpg"
+                  src="https://i.pinimg.com/736x/af/b3/fc/afb3fc03fbdb8b173a7f9fc1d6f743ec.jpg"
                   style={{
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
-                    opacity: 0.65,
+                    opacity: 0.85,
                   }}
                   alt="Engineering"
                 />
@@ -794,11 +794,16 @@ export default function App() {
                     NPD Division
                   </div>
                   <div
-                    style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.3 }}
+                    style={{
+                      fontSize: 26,
+                      fontWeight: 800,
+                      lineHeight: 2,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      fontFamily: "'DM Mono',monospace",
+                    }}
                   >
-                    Innovation
-                    <br />
-                    Management
+                    TEAM PORTAL
                   </div>
                 </div>
               </div>
@@ -852,11 +857,11 @@ export default function App() {
                           marginBottom: 20,
                         }}
                       >
-                        Enter your Team ID to continue
+                        Enter your Employee ID to continue
                       </div>
                       <input
                         className={`field${authError ? " error" : ""}`}
-                        placeholder="Team ID (e.g. MK004)"
+                        placeholder="Employee ID"
                         value={authCode}
                         onChange={(e) => {
                           setAuthCode(e.target.value);
