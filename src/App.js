@@ -114,6 +114,28 @@ const STYLES = `
   .news-scroll-card:hover{border-color:var(--border-teal);transform:translateY(-2px);}
   .draft-item{background:var(--navy);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;transition:border-color 0.2s;}
   .draft-item:hover{border-color:rgba(0,212,184,0.2);}
+
+  /* Quiz security */
+  .no-select{-webkit-user-select:none;-moz-user-select:none;user-select:none;}
+  .watermark{
+    position:fixed;inset:0;pointer-events:none;z-index:150;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0.045;transform:rotate(-30deg);
+    font-size:clamp(18px,4vw,32px);font-weight:900;color:#fff;
+    font-family:'DM Mono',monospace;letter-spacing:0.08em;
+    white-space:nowrap;text-align:center;line-height:1.8;
+    text-transform:uppercase;
+  }
+  .strike-overlay{
+    position:fixed;inset:0;z-index:500;background:rgba(5,5,15,0.93);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:fadeIn 0.2s ease;
+  }
+  .strike-box{
+    background:#12192b;border:1px solid rgba(239,68,68,0.5);border-radius:20px;
+    padding:36px 32px;max-width:380px;width:100%;text-align:center;
+    box-shadow:0 0 60px rgba(239,68,68,0.15);
+  }
 `;
 
 function Avatar({ name, size = 36 }) {
@@ -636,6 +658,12 @@ export default function App() {
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
   const [archiveQuiz, setArchiveQuiz] = useState(null);
+  // ── QUIZ SECURITY STATE ──
+  const [strikes, setStrikes] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningReason, setWarningReason] = useState("");
+  const [quizFlagged, setQuizFlagged] = useState(false);
+  const MAX_STRIKES = 3;
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [editingNews, setEditingNews] = useState(null);
@@ -704,6 +732,100 @@ export default function App() {
     };
     fetchData();
   }, [user, view, activeQuiz]);
+
+  // ── QUIZ SECURITY: fullscreen + visibility + blur listeners ──
+  useEffect(() => {
+    if (!activeQuiz) return;
+
+    const handleVisibility = () => {
+      if (document.hidden) triggerStrike("Tab switch detected");
+    };
+    const handleBlur = () => {
+      if (activeQuiz) triggerStrike("Window left");
+    };
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && activeQuiz)
+        triggerStrike("Fullscreen exited");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+    // eslint-disable-next-line
+  }, [activeQuiz]);
+
+  const triggerStrike = (reason) => {
+    setStrikes((prev) => {
+      const next = prev + 1;
+      setWarningReason(reason);
+      if (next >= MAX_STRIKES) {
+        setShowWarning(false);
+        autoSubmitFlagged();
+      } else {
+        setShowWarning(true);
+      }
+      return next;
+    });
+  };
+
+  const autoSubmitFlagged = async () => {
+    setQuizFlagged(true);
+    // Use the ref snapshot for activeQuiz/userAnswers since state may lag
+    setActiveQuiz((q) => {
+      if (!q) return q;
+      (async (quiz) => {
+        let score = 0;
+        // we can't use userAnswers directly in async closure reliably, save score=0 flagged
+        await addDoc(collection(db, "results"), {
+          userId: user.id,
+          userName: user.name,
+          quizId: quiz.id,
+          quizTitle: quiz.title,
+          score: 0,
+          total: quiz.questions.length,
+          responses: {},
+          submittedAt: new Date(),
+          flagged: true,
+          flagReason: "Auto-submitted: 3 integrity violations",
+        });
+      })(q);
+      return null;
+    });
+    exitFullscreen();
+    setUserAnswers({});
+    setStrikes(0);
+    setView("home");
+    alert(
+      "⚠️ Quiz auto-submitted due to 3 integrity violations. Your attempt has been flagged."
+    );
+  };
+
+  const enterFullscreen = () => {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  };
+
+  const startQuiz = (q) => {
+    setStrikes(0);
+    setQuizFlagged(false);
+    setShowWarning(false);
+    setActiveQuiz(q);
+    enterFullscreen();
+  };
 
   const handleIdSubmit = async () => {
     setAuthError("");
@@ -790,10 +912,13 @@ export default function App() {
       total: activeQuiz.questions.length,
       responses: userAnswers,
       submittedAt: new Date(),
+      flagged: false,
     });
+    exitFullscreen();
     alert(`Final Marks: ${score} / ${activeQuiz.questions.length}`);
     setActiveQuiz(null);
     setUserAnswers({});
+    setStrikes(0);
     setView("home");
   };
 
@@ -1728,7 +1853,7 @@ export default function App() {
                           {!done ? (
                             <button
                               className="btn-ghost"
-                              onClick={() => setActiveQuiz(q)}
+                              onClick={() => startQuiz(q)}
                             >
                               START →
                             </button>
@@ -1752,19 +1877,161 @@ export default function App() {
 
               {/* ACTIVE QUIZ */}
               {activeQuiz && (
-                <div className="fadeIn">
+                <div
+                  className="fadeIn"
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  {/* Watermark */}
+                  <div className="watermark" aria-hidden="true">
+                    {user.name}
+                    {"\n"}
+                    {user.id}
+                    {"\n"}
+                    {user.name}
+                    {"\n"}
+                    {user.id}
+                  </div>
+
+                  {/* Strike warning overlay */}
+                  {showWarning && (
+                    <div className="strike-overlay">
+                      <div className="strike-box">
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                        <div
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 800,
+                            color: "var(--red)",
+                            marginBottom: 8,
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          INTEGRITY ALERT
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "var(--text-dim)",
+                            marginBottom: 20,
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {warningReason} was detected.
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            justifyContent: "center",
+                            marginBottom: 20,
+                          }}
+                        >
+                          {[1, 2, 3].map((n) => (
+                            <div
+                              key={n}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: "50%",
+                                background:
+                                  strikes >= n ? "var(--red)" : "var(--navy3)",
+                                border: `2px solid ${
+                                  strikes >= n ? "var(--red)" : "var(--border)"
+                                }`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 14,
+                                fontWeight: 700,
+                                color:
+                                  strikes >= n ? "#fff" : "var(--text-faint)",
+                                transition: "all 0.3s",
+                              }}
+                            >
+                              {n}
+                            </div>
+                          ))}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-faint)",
+                            marginBottom: 20,
+                          }}
+                        >
+                          {MAX_STRIKES - strikes} warning
+                          {MAX_STRIKES - strikes !== 1 ? "s" : ""} remaining
+                          before auto-submit
+                        </div>
+                        <button
+                          className="btn-primary"
+                          onClick={() => {
+                            setShowWarning(false);
+                            enterFullscreen();
+                          }}
+                        >
+                          Return to Quiz
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quiz header */}
                   <div style={{ marginBottom: 20 }}>
                     <div
                       style={{
-                        fontSize: 11,
-                        color: "var(--teal)",
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        fontFamily: "'DM Mono',monospace",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
-                      {Object.keys(userAnswers).length}/
-                      {activeQuiz.questions.length} answered
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--teal)",
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          fontFamily: "'DM Mono',monospace",
+                        }}
+                      >
+                        {Object.keys(userAnswers).length}/
+                        {activeQuiz.questions.length} answered
+                      </div>
+                      {strikes > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 5,
+                            alignItems: "center",
+                          }}
+                        >
+                          {[1, 2, 3].map((n) => (
+                            <div
+                              key={n}
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                background:
+                                  strikes >= n ? "var(--red)" : "var(--navy3)",
+                                border: `1px solid ${
+                                  strikes >= n ? "var(--red)" : "var(--border)"
+                                }`,
+                              }}
+                            />
+                          ))}
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "var(--red)",
+                              fontFamily: "'DM Mono',monospace",
+                              marginLeft: 4,
+                            }}
+                          >
+                            STRIKES
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div
                       style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}
@@ -1795,9 +2062,12 @@ export default function App() {
                       />
                     </div>
                   </div>
+
+                  {/* Questions — no-select + no right-click */}
                   {activeQuiz.questions.map((q, i) => (
                     <div
                       key={i}
+                      className="no-select"
                       style={{
                         background: "var(--panel)",
                         border: "1px solid var(--border)",
@@ -1825,6 +2095,7 @@ export default function App() {
                             marginBottom: 14,
                           }}
                           alt="Visual"
+                          onContextMenu={(e) => e.preventDefault()}
                         />
                       )}
                       <p
@@ -2382,8 +2653,32 @@ export default function App() {
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 13,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
                           {res.quizTitle}
+                          {res.flagged && (
+                            <span
+                              style={{
+                                fontSize: 9,
+                                background: "rgba(239,68,68,0.15)",
+                                color: "var(--red)",
+                                border: "1px solid rgba(239,68,68,0.3)",
+                                padding: "1px 6px",
+                                borderRadius: 10,
+                                fontFamily: "'DM Mono',monospace",
+                                fontWeight: 700,
+                              }}
+                            >
+                              🚩
+                            </span>
+                          )}
                         </div>
                         <div
                           style={{
@@ -2649,8 +2944,36 @@ export default function App() {
                       >
                         <Avatar name={m.name} size={36} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
                             {m.name}
+                            {results.some(
+                              (r) => r.userId === m.id && r.flagged
+                            ) && (
+                              <span
+                                title="Has flagged attempt"
+                                style={{
+                                  fontSize: 9,
+                                  background: "rgba(239,68,68,0.15)",
+                                  color: "var(--red)",
+                                  border: "1px solid rgba(239,68,68,0.3)",
+                                  padding: "1px 6px",
+                                  borderRadius: 10,
+                                  fontFamily: "'DM Mono',monospace",
+                                  letterSpacing: "0.08em",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                🚩 FLAGGED
+                              </span>
+                            )}
                           </div>
                           <div
                             style={{
