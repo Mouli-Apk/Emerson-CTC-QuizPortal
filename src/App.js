@@ -26,6 +26,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const ADMIN_ID = "E1550484";
 
 const TEAM_MEMBERS = [
   { id: "VK001", name: "Vasanthakumar N" },
@@ -47,20 +48,19 @@ const TEAM_MEMBERS = [
   { id: "E1552209", name: "Vignesh" },
 ];
 
-// Password complexity: min 6 chars, 1 uppercase, 1 symbol
 const validatePassword = (pw) => {
-  const errors = [];
-  if (pw.length < 6) errors.push("At least 6 characters");
-  if (!/[A-Z]/.test(pw)) errors.push("At least 1 uppercase letter");
-  if (!/[^a-zA-Z0-9]/.test(pw)) errors.push("At least 1 symbol (e.g. @, #, !)");
-  return errors;
+  const e = [];
+  if (pw.length < 6) e.push("At least 6 characters");
+  if (!/[A-Z]/.test(pw)) e.push("At least 1 uppercase letter");
+  if (!/[^a-zA-Z0-9]/.test(pw)) e.push("At least 1 symbol (e.g. @, #, !)");
+  return e;
 };
 
-// SHA-256 via browser Web Crypto API — no library needed
-// Plaintext password never reaches Firestore; only the hash is stored
 const hashPassword = async (pw) => {
-  const encoded = new TextEncoder().encode(pw);
-  const buf = await crypto.subtle.digest("SHA-256", encoded);
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(pw)
+  );
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -68,96 +68,52 @@ const hashPassword = async (pw) => {
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --navy: #0a0f1e;
-    --navy3: #1a2235;
-    --panel: #161d2e;
-    --teal: #00d4b8;
-    --teal2: #00b89e;
-    --teal-dim: rgba(0,212,184,0.12);
-    --teal-glow: rgba(0,212,184,0.25);
-    --amber: #f59e0b;
-    --red: #ef4444;
-    --green: #22c55e;
-    --text: #e2e8f0;
-    --text-dim: #94a3b8;
-    --text-faint: #475569;
-    --border: rgba(255,255,255,0.07);
-    --border-teal: rgba(0,212,184,0.3);
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --navy:#0a0f1e; --navy3:#1a2235; --panel:#141b2d;
+    --teal:#00d4b8; --teal2:#00b89e; --teal-dim:rgba(0,212,184,0.12); --teal-glow:rgba(0,212,184,0.25);
+    --amber:#f59e0b; --red:#ef4444; --green:#22c55e;
+    --text:#edf2f7; --text-dim:#b8c8d8; --text-faint:#8096b0;
+    --border:rgba(255,255,255,0.09); --border-teal:rgba(0,212,184,0.3);
   }
-
-  body { background: var(--navy); color: var(--text); font-family: 'Sora', sans-serif; }
-  input, select, textarea, button { font-family: 'Sora', sans-serif; }
-
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: var(--navy); }
-  ::-webkit-scrollbar-thumb { background: var(--teal-glow); border-radius: 2px; }
-
-  .pulse { animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
-
-  .fadeIn { animation: fadeIn 0.35s ease forwards; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
-
-  .slideIn { animation: slideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-  @keyframes slideIn { from{opacity:0;transform:translateX(24px);} to{opacity:1;transform:translateX(0);} }
-
-  .card-hover { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
-  .card-hover:hover { transform: translateY(-2px); border-color: var(--border-teal) !important; box-shadow: 0 8px 32px rgba(0,212,184,0.1); }
-
-  .btn-primary {
-    width:100%; padding:14px 20px; background:var(--teal); color:var(--navy);
-    border:none; border-radius:10px; font-weight:700; font-size:14px;
-    letter-spacing:0.04em; cursor:pointer; transition:background 0.2s, transform 0.15s;
-    text-transform:uppercase;
-  }
-  .btn-primary:hover { background:var(--teal2); transform:translateY(-1px); }
-  .btn-primary:disabled { background:#2a3a4a; color:#4a5568; cursor:not-allowed; transform:none; }
-
-  .btn-ghost {
-    background:none; border:1px solid var(--border-teal); color:var(--teal);
-    padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600;
-    cursor:pointer; letter-spacing:0.05em; transition:background 0.2s;
-  }
-  .btn-ghost:hover { background:var(--teal-dim); }
-
-  .btn-back {
-    background:none; border:none; color:var(--text-faint); font-size:12px;
-    font-weight:600; cursor:pointer; letter-spacing:0.05em; padding:0;
-    display:flex; align-items:center; gap:6px; margin-bottom:18px;
-    transition:color 0.2s;
-  }
-  .btn-back:hover { color:var(--teal); }
-
-  .field {
-    width:100%; background:var(--navy3); border:1px solid var(--border);
-    color:var(--text); padding:13px 16px; border-radius:10px; font-size:14px;
-    margin-bottom:12px; outline:none; transition:border-color 0.2s;
-  }
-  .field:focus { border-color:var(--border-teal); }
-  .field::placeholder { color:var(--text-faint); }
-  .field.error { border-color:var(--red); }
-
-  .option-btn {
-    width:100%; padding:13px 16px; margin-bottom:8px; border-radius:10px;
-    border:1px solid var(--border); background:var(--navy3); color:var(--text);
-    text-align:left; cursor:pointer; font-size:14px; font-family:'Sora',sans-serif;
-    transition:border-color 0.2s, background 0.2s;
-  }
-  .option-btn:hover { border-color:var(--border-teal); background:var(--teal-dim); }
-  .option-btn.selected { border-color:var(--teal); background:var(--teal-dim); color:var(--teal); font-weight:600; }
-
-  .pw-rule { font-size:11px; padding:3px 0; display:flex; align-items:center; gap:6px; }
-  .pw-rule.pass { color:var(--green); }
-  .pw-rule.fail { color:var(--text-faint); }
-
-  .news-chip {
-    font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
-    padding:2px 8px; border-radius:20px; font-family:'DM Mono',monospace;
-  }
+  body{background:var(--navy);color:var(--text);font-family:'Sora',sans-serif;}
+  input,select,textarea,button{font-family:'Sora',sans-serif;}
+  ::-webkit-scrollbar{width:4px;height:4px;}
+  ::-webkit-scrollbar-track{background:var(--navy);}
+  ::-webkit-scrollbar-thumb{background:var(--teal-glow);border-radius:2px;}
+  .pulse{animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .fadeIn{animation:fadeIn 0.35s ease forwards;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .slideIn{animation:slideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+  @keyframes slideIn{from{opacity:0;transform:translateX(24px);}to{opacity:1;transform:translateX(0);}}
+  .card-hover{transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s;}
+  .card-hover:hover{transform:translateY(-2px);border-color:var(--border-teal)!important;box-shadow:0 8px 32px rgba(0,212,184,0.1);}
+  .btn-primary{width:100%;padding:14px 20px;background:var(--teal);color:var(--navy);border:none;border-radius:10px;font-weight:700;font-size:14px;letter-spacing:0.04em;cursor:pointer;transition:background 0.2s,transform 0.15s;text-transform:uppercase;}
+  .btn-primary:hover{background:var(--teal2);transform:translateY(-1px);}
+  .btn-primary:disabled{background:#2a3a4a;color:#5a6a7a;cursor:not-allowed;transform:none;}
+  .btn-ghost{background:none;border:1px solid var(--border-teal);color:var(--teal);padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:0.05em;transition:background 0.2s;}
+  .btn-ghost:hover{background:var(--teal-dim);}
+  .btn-back{background:none;border:none;color:var(--text-faint);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:0.05em;padding:0;display:flex;align-items:center;gap:6px;margin-bottom:18px;transition:color 0.2s;}
+  .btn-back:hover{color:var(--teal);}
+  .field{width:100%;background:var(--navy3);border:1px solid var(--border);color:var(--text);padding:13px 16px;border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;transition:border-color 0.2s;}
+  .field:focus{border-color:var(--border-teal);}
+  .field::placeholder{color:var(--text-faint);}
+  .field.error{border-color:var(--red);}
+  .option-btn{width:100%;padding:13px 16px;margin-bottom:8px;border-radius:10px;border:1px solid var(--border);background:var(--navy3);color:var(--text);text-align:left;cursor:pointer;font-size:14px;font-family:'Sora',sans-serif;transition:border-color 0.2s,background 0.2s;}
+  .option-btn:hover{border-color:var(--border-teal);background:var(--teal-dim);}
+  .option-btn.selected{border-color:var(--teal);background:var(--teal-dim);color:var(--teal);font-weight:600;}
+  .pw-rule{font-size:11px;padding:3px 0;display:flex;align-items:center;gap:6px;}
+  .pw-rule.pass{color:var(--green);}
+  .pw-rule.fail{color:var(--text-faint);}
+  .news-chip{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.2s ease;}
+  .modal-box{background:var(--panel);border:1px solid var(--border-teal);border-radius:20px;padding:28px;width:100%;max-width:560px;max-height:82vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 40px rgba(0,212,184,0.08);}
+  .news-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;}
+  .news-scroll-card{flex:0 0 230px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color 0.2s,transform 0.2s;}
+  .news-scroll-card:hover{border-color:var(--border-teal);transform:translateY(-2px);}
+  .draft-item{background:var(--navy);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;transition:border-color 0.2s;}
+  .draft-item:hover{border-color:rgba(0,212,184,0.2);}
 `;
 
 function Avatar({ name, size = 36 }) {
@@ -190,32 +146,6 @@ function Avatar({ name, size = 36 }) {
     >
       {initials}
     </div>
-  );
-}
-
-function CategoryBadge({ cat }) {
-  const map = {
-    Mechanical: ["#f59e0b", "#2a1f05"],
-    Material: ["#a78bfa", "#1e1635"],
-    Fluid: ["#60a5fa", "#0f1f35"],
-  };
-  const [fg, bg] = map[cat] || ["#94a3b8", "#1e2235"];
-  return (
-    <span
-      style={{
-        background: bg,
-        color: fg,
-        padding: "3px 10px",
-        borderRadius: "20px",
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        border: `1px solid ${fg}44`,
-      }}
-    >
-      {cat}
-    </span>
   );
 }
 
@@ -255,7 +185,6 @@ function StatChip({ label, value, accent }) {
   );
 }
 
-// ── NEWS CATEGORY CONFIG ──
 const NEWS_TYPES = {
   update: { label: "Update", fg: "#00d4b8", bg: "rgba(0,212,184,0.1)" },
   announcement: {
@@ -267,24 +196,27 @@ const NEWS_TYPES = {
   alert: { label: "Alert", fg: "#ef4444", bg: "rgba(239,68,68,0.1)" },
 };
 
-function NewsCard({ item, onDelete, onEdit, isAdmin }) {
+function NewsCard({ item, onDelete, onEdit, isAdmin, compact = false }) {
   const type = NEWS_TYPES[item.type] || NEWS_TYPES.update;
+  const base = compact
+    ? { className: "news-scroll-card" }
+    : {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 14,
+          padding: "16px 20px",
+        },
+      };
   return (
-    <div
-      style={{
-        background: "var(--panel)",
-        border: "1px solid var(--border)",
-        borderRadius: 14,
-        padding: "16px 20px",
-        position: "relative",
-      }}
-    >
+    <div {...base}>
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 6,
           marginBottom: 8,
+          flexWrap: "wrap",
         }}
       >
         <span
@@ -306,11 +238,11 @@ function NewsCard({ item, onDelete, onEdit, isAdmin }) {
               border: "1px solid rgba(245,158,11,0.3)",
             }}
           >
-            📌 Pinned
+            📌
           </span>
         )}
         {isAdmin && (
-          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
             <button
               onClick={() => onEdit(item)}
               style={{
@@ -340,29 +272,362 @@ function NewsCard({ item, onDelete, onEdit, isAdmin }) {
           </div>
         )}
       </div>
-      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+      <div
+        style={{
+          fontWeight: 700,
+          fontSize: compact ? 12 : 13,
+          marginBottom: 4,
+          color: "var(--text)",
+        }}
+      >
         {item.title}
       </div>
-      <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.6 }}>
+      <div
+        style={{
+          fontSize: compact ? 11 : 12,
+          color: "var(--text-dim)",
+          lineHeight: 1.6,
+        }}
+      >
         {item.body}
       </div>
     </div>
   );
 }
 
+function DraftModal({ questions, onClose, onDelete, onEdit }) {
+  const [editIdx, setEditIdx] = useState(null);
+  const [editData, setEditData] = useState(null);
+
+  const startEdit = (i) => {
+    setEditIdx(i);
+    setEditData({
+      ...questions[i],
+      options: questions[i].options ? [...questions[i].options] : [],
+    });
+  };
+  const saveEdit = () => {
+    onEdit(editIdx, editData);
+    setEditIdx(null);
+    setEditData(null);
+  };
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-box">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--teal)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                fontFamily: "'DM Mono',monospace",
+              }}
+            >
+              Draft Preview
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginTop: 3 }}>
+              {questions.length} Question{questions.length !== 1 ? "s" : ""}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "1px solid var(--border)",
+              color: "var(--text-faint)",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {questions.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 0",
+              color: "var(--text-faint)",
+              fontSize: 13,
+            }}
+          >
+            No questions added yet.
+          </div>
+        )}
+
+        {questions.map((q, i) => (
+          <div key={i} className="draft-item">
+            {editIdx === i ? (
+              <div className="slideIn">
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "var(--teal)",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    fontFamily: "'DM Mono',monospace",
+                    marginBottom: 10,
+                  }}
+                >
+                  Editing Q{String(i + 1).padStart(2, "0")}
+                </div>
+                <textarea
+                  className="field"
+                  value={editData.text}
+                  rows={3}
+                  onChange={(e) =>
+                    setEditData({ ...editData, text: e.target.value })
+                  }
+                  style={{ resize: "vertical" }}
+                  placeholder="Question text..."
+                />
+                {editData.options && editData.options.length > 0 ? (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text-faint)",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Options — radio marks correct answer
+                    </div>
+                    {editData.options.map((opt, oi) => (
+                      <div
+                        key={oi}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 6,
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          checked={editData.correct === opt}
+                          onChange={() =>
+                            setEditData({ ...editData, correct: opt })
+                          }
+                          style={{ accentColor: "var(--teal)", flexShrink: 0 }}
+                        />
+                        <input
+                          className="field"
+                          style={{ flex: 1, marginBottom: 0 }}
+                          value={opt}
+                          onChange={(e) => {
+                            const o = [...editData.options];
+                            const wasCorrect = editData.correct === opt;
+                            o[oi] = e.target.value;
+                            setEditData({
+                              ...editData,
+                              options: o,
+                              correct: wasCorrect
+                                ? e.target.value
+                                : editData.correct,
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    className="field"
+                    placeholder="Correct answer"
+                    value={editData.correct || ""}
+                    onChange={(e) =>
+                      setEditData({ ...editData, correct: e.target.value })
+                    }
+                  />
+                )}
+                {editData.type === "Picture" && (
+                  <input
+                    className="field"
+                    placeholder="Image URL"
+                    value={editData.image || ""}
+                    onChange={(e) =>
+                      setEditData({ ...editData, image: e.target.value })
+                    }
+                  />
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button
+                    className="btn-primary"
+                    style={{ padding: "10px 16px" }}
+                    onClick={saveEdit}
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditIdx(null);
+                      setEditData(null);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-dim)",
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      width: "auto",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 10,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "var(--text-faint)",
+                      fontFamily: "'DM Mono',monospace",
+                      marginBottom: 5,
+                    }}
+                  >
+                    Q{String(i + 1).padStart(2, "0")} ·{" "}
+                    <span style={{ color: "var(--teal)" }}>{q.type}</span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--text)",
+                      lineHeight: 1.5,
+                      marginBottom: q.options ? 8 : 0,
+                    }}
+                  >
+                    {q.text}
+                  </div>
+                  {q.options && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 4,
+                        marginTop: 6,
+                      }}
+                    >
+                      {q.options.map((opt, oi) => (
+                        <span
+                          key={oi}
+                          style={{
+                            fontSize: 10,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            background:
+                              opt === q.correct
+                                ? "rgba(34,197,94,0.15)"
+                                : "var(--navy3)",
+                            color:
+                              opt === q.correct
+                                ? "var(--green)"
+                                : "var(--text-dim)",
+                            border:
+                              opt === q.correct
+                                ? "1px solid rgba(34,197,94,0.3)"
+                                : "1px solid var(--border)",
+                            fontWeight: opt === q.correct ? 700 : 400,
+                          }}
+                        >
+                          {opt === q.correct ? "✓ " : ""}
+                          {opt}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {!q.options && q.correct && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--green)",
+                        marginTop: 4,
+                      }}
+                    >
+                      ✓ {q.correct}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <button
+                    onClick={() => startEdit(i)}
+                    style={{
+                      background: "var(--navy3)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-dim)",
+                      padding: "5px 10px",
+                      borderRadius: 7,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => onDelete(i)}
+                    style={{
+                      background: "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      color: "var(--red)",
+                      padding: "5px 10px",
+                      borderRadius: 7,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  // ── AUTH STATE ──
-  const [loginStep, setLoginStep] = useState("id"); // "id" | "password" | "create"
+  const [loginStep, setLoginStep] = useState("id");
   const [authCode, setAuthCode] = useState("");
   const [foundMember, setFoundMember] = useState(null);
-  const [existingUser, setExistingUser] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwErrors, setPwErrors] = useState([]);
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-
-  // ── APP STATE ──
   const [user, setUser] = useState(null);
   const [view, setView] = useState("home");
   const [loading, setLoading] = useState(true);
@@ -371,11 +636,9 @@ export default function App() {
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
   const [archiveQuiz, setArchiveQuiz] = useState(null);
-
-  // ── NEWS STATE ──
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
-  const [editingNews, setEditingNews] = useState(null); // null | news item
+  const [editingNews, setEditingNews] = useState(null);
   const [newsForm, setNewsForm] = useState({
     title: "",
     body: "",
@@ -383,10 +646,7 @@ export default function App() {
     pinned: false,
   });
   const [showNewsForm, setShowNewsForm] = useState(false);
-
-  // ── QUIZ BUILDER STATE ──
   const [newQuizTitle, setNewQuizTitle] = useState("");
-  const [category, setCategory] = useState("Mechanical");
   const [deadline, setDeadline] = useState("");
   const [addedQuestions, setAddedQuestions] = useState([]);
   const [qType, setQType] = useState("MCQ");
@@ -395,8 +655,8 @@ export default function App() {
   const [mcqOptions, setMcqOptions] = useState(["", "", ""]);
   const [correctIdx, setCorrectIdx] = useState(0);
   const [ansKey, setAnsKey] = useState("");
+  const [showDraftModal, setShowDraftModal] = useState(false);
 
-  // ── FETCH NEWS (public, no auth required) ──
   const fetchNews = async () => {
     setNewsLoading(true);
     try {
@@ -405,20 +665,19 @@ export default function App() {
       );
       setNews(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (e) {
-      console.error("News fetch error:", e);
+      console.error(e);
     }
     setNewsLoading(false);
   };
 
-  // ── SESSION PERSISTENCE ──
   useEffect(() => {
     const checkSession = async () => {
-      const savedId = localStorage.getItem("npd_portal_id");
-      if (savedId) {
+      const saved = localStorage.getItem("npd_portal_id");
+      if (saved) {
         try {
-          const userDoc = await getDoc(doc(db, "users", savedId));
-          if (userDoc.exists()) {
-            setUser({ id: savedId, ...userDoc.data() });
+          const ud = await getDoc(doc(db, "users", saved));
+          if (ud.exists()) {
+            setUser({ id: saved, ...ud.data() });
             setView("home");
           }
         } catch (e) {
@@ -431,37 +690,33 @@ export default function App() {
     checkSession();
   }, []);
 
-  // ── DATA SYNC ──
   useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        const qSnap = await getDocs(
-          query(collection(db, "quizzes"), orderBy("createdAt", "desc"))
-        );
-        const rSnap = await getDocs(
-          query(collection(db, "results"), orderBy("submittedAt", "desc"))
-        );
-        setQuizzes(qSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setResults(rSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      };
-      fetchData();
-    }
+    if (!user) return;
+    const fetchData = async () => {
+      const qS = await getDocs(
+        query(collection(db, "quizzes"), orderBy("createdAt", "desc"))
+      );
+      const rS = await getDocs(
+        query(collection(db, "results"), orderBy("submittedAt", "desc"))
+      );
+      setQuizzes(qS.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setResults(rS.docs.map((d) => ({ id: d.id, ...d.data() })));
+    };
+    fetchData();
   }, [user, view, activeQuiz]);
 
-  // ── STEP 1: LOOK UP TEAM ID ──
   const handleIdSubmit = async () => {
     setAuthError("");
     const id = authCode.toUpperCase().trim();
     const member = TEAM_MEMBERS.find((m) => m.id === id);
     if (!member) {
-      setAuthError("Team ID not found. Check your ID and try again.");
+      setAuthError("Username not found. Check your ID and try again.");
       return;
     }
     setAuthLoading(true);
     try {
       const snap = await getDoc(doc(db, "users", id));
       setFoundMember(member);
-      setExistingUser(snap.exists());
       setLoginStep(snap.exists() ? "password" : "create");
     } catch (e) {
       setAuthError("Connection error. Try again.");
@@ -469,13 +724,11 @@ export default function App() {
     setAuthLoading(false);
   };
 
-  // ── STEP 2A: LOGIN WITH PASSWORD ──
   const handleLogin = async () => {
     setAuthError("");
     setAuthLoading(true);
     try {
-      const snap = await getDoc(doc(db, "users", foundMember.id));
-      const data = snap.data();
+      const data = (await getDoc(doc(db, "users", foundMember.id))).data();
       const hashed = await hashPassword(password);
       if (data.password === hashed) {
         setUser({ id: foundMember.id, ...data });
@@ -490,11 +743,10 @@ export default function App() {
     setAuthLoading(false);
   };
 
-  // ── STEP 2B: CREATE PASSWORD ──
   const handleCreatePassword = async () => {
     setAuthError("");
     const errors = validatePassword(password);
-    if (errors.length > 0) {
+    if (errors.length) {
       setPwErrors(errors);
       return;
     }
@@ -508,7 +760,7 @@ export default function App() {
       const profile = {
         name: foundMember.name,
         password: hashed,
-        role: foundMember.id === "E1550484" ? "admin" : "user",
+        role: foundMember.id === ADMIN_ID ? "admin" : "user",
       };
       await setDoc(doc(db, "users", foundMember.id), profile);
       localStorage.setItem("npd_portal_id", foundMember.id);
@@ -520,7 +772,6 @@ export default function App() {
     setAuthLoading(false);
   };
 
-  // ── QUIZ SUBMIT ──
   const submitTest = async () => {
     let score = 0;
     activeQuiz.questions.forEach((q, i) => {
@@ -546,15 +797,13 @@ export default function App() {
     setView("home");
   };
 
-  // ── QUIZ PUBLISH ──
   const publishQuiz = async () => {
     if (!newQuizTitle.trim()) return alert("Enter a quiz title");
-    if (addedQuestions.length === 0) return alert("Add at least one question");
+    if (!addedQuestions.length) return alert("Add at least one question");
     await addDoc(collection(db, "quizzes"), {
       title: newQuizTitle,
       questions: addedQuestions,
       author: user.name,
-      category,
       deadline,
       createdAt: new Date(),
     });
@@ -562,9 +811,28 @@ export default function App() {
     setView("home");
     setAddedQuestions([]);
     setNewQuizTitle("");
+    setDeadline("");
   };
 
-  // ── NEWS CRUD ──
+  const addQuestion = () => {
+    if (!qText.trim()) return alert("Enter a question");
+    setAddedQuestions([
+      ...addedQuestions,
+      {
+        type: qType,
+        text: qText,
+        image: qType === "Picture" ? qImgUrl : null,
+        options: qType === "MCQ" ? [...mcqOptions] : null,
+        correct: qType === "MCQ" ? mcqOptions[correctIdx] : ansKey,
+      },
+    ]);
+    setQText("");
+    setAnsKey("");
+    setQImgUrl("");
+    setMcqOptions(["", "", ""]);
+    setCorrectIdx(0);
+  };
+
   const saveNews = async () => {
     if (!newsForm.title.trim() || !newsForm.body.trim())
       return alert("Fill in title and body");
@@ -581,13 +849,11 @@ export default function App() {
     setNewsForm({ title: "", body: "", type: "update", pinned: false });
     fetchNews();
   };
-
   const deleteNews = async (id) => {
     if (!window.confirm("Delete this news item?")) return;
     await deleteDoc(doc(db, "News", id));
     fetchNews();
   };
-
   const startEditNews = (item) => {
     setEditingNews(item);
     setNewsForm({
@@ -598,7 +864,6 @@ export default function App() {
     });
     setShowNewsForm(true);
   };
-
   const logout = () => {
     localStorage.removeItem("npd_portal_id");
     setUser(null);
@@ -611,7 +876,6 @@ export default function App() {
     setView("home");
   };
 
-  // ── LOADING SCREEN ──
   if (loading)
     return (
       <>
@@ -651,8 +915,23 @@ export default function App() {
   return (
     <>
       <style>{STYLES}</style>
+      {showDraftModal && (
+        <DraftModal
+          questions={addedQuestions}
+          onClose={() => setShowDraftModal(false)}
+          onDelete={(i) =>
+            setAddedQuestions(addedQuestions.filter((_, x) => x !== i))
+          }
+          onEdit={(i, u) => {
+            const n = [...addedQuestions];
+            n[i] = u;
+            setAddedQuestions(n);
+          }}
+        />
+      )}
+
       <div style={{ background: "var(--navy)", minHeight: "100vh" }}>
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <header
           style={{
             background: "var(--panel)",
@@ -743,9 +1022,7 @@ export default function App() {
         <div
           style={{ maxWidth: 800, margin: "auto", padding: "24px 20px 100px" }}
         >
-          {/* ════════════════════════════════
-              AUTH SECTION (not logged in)
-          ════════════════════════════════ */}
+          {/* LOGIN */}
           {!user && (
             <div
               className="fadeIn"
@@ -756,7 +1033,6 @@ export default function App() {
                 flexWrap: "wrap",
               }}
             >
-              {/* Left: hero image */}
               <div
                 style={{
                   flex: "1 1 360px",
@@ -820,15 +1096,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Center: login card */}
-              <div
-                style={{
-                  flex: "1 1 220px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 0,
-                }}
-              >
+              <div style={{ flex: "1 1 220px" }}>
                 <div
                   style={{
                     background: "var(--panel)",
@@ -838,7 +1106,6 @@ export default function App() {
                     marginBottom: 16,
                   }}
                 >
-                  {/* ── STEP: ENTER ID ── */}
                   {loginStep === "id" && (
                     <div className="slideIn">
                       <div
@@ -869,7 +1136,7 @@ export default function App() {
                           marginBottom: 20,
                         }}
                       >
-                        Enter your Team ID to continue
+                        Enter your Username to continue
                       </div>
                       <input
                         className={`field${authError ? " error" : ""}`}
@@ -902,8 +1169,6 @@ export default function App() {
                       </button>
                     </div>
                   )}
-
-                  {/* ── STEP: ENTER PASSWORD ── */}
                   {loginStep === "password" && (
                     <div className="slideIn">
                       <button
@@ -981,8 +1246,6 @@ export default function App() {
                       </button>
                     </div>
                   )}
-
-                  {/* ── STEP: CREATE PASSWORD ── */}
                   {loginStep === "create" && (
                     <div className="slideIn">
                       <button
@@ -1030,7 +1293,6 @@ export default function App() {
                       >
                         Create your account password
                       </div>
-
                       <input
                         className="field"
                         type="password"
@@ -1042,8 +1304,6 @@ export default function App() {
                           setAuthError("");
                         }}
                       />
-
-                      {/* Live password rules */}
                       {password && (
                         <div
                           style={{
@@ -1077,7 +1337,6 @@ export default function App() {
                           ))}
                         </div>
                       )}
-
                       <input
                         className={`field${authError ? " error" : ""}`}
                         type="password"
@@ -1100,7 +1359,6 @@ export default function App() {
                           {authError}
                         </div>
                       )}
-
                       <button
                         className="btn-primary"
                         onClick={handleCreatePassword}
@@ -1113,7 +1371,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Right: dynamic news */}
+              {/* News — login page */}
               <div
                 style={{
                   flex: "1 1 200px",
@@ -1154,9 +1412,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ════════════════════════════════
-              LOGGED IN SECTION
-          ════════════════════════════════ */}
+          {/* LOGGED IN */}
           {user && (
             <div className="fadeIn">
               {/* User strip */}
@@ -1196,139 +1452,202 @@ export default function App() {
                 />
               </div>
 
-              {/* ── HOME ── */}
+              {/* HOME */}
               {view === "home" && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 14,
-                  }}
-                >
-                  {[
-                    {
-                      icon: "🎯",
-                      label: "Attend Quiz",
-                      sub: "Take active tests",
-                      target: "attend",
-                      accent: "var(--teal)",
-                    },
-                    {
-                      icon: "📖",
-                      label: "Solutions Archive",
-                      sub: "Gated answer keys",
-                      target: "archive",
-                      accent: "var(--amber)",
-                    },
-                    {
-                      icon: "➕",
-                      label: "Post Quiz",
-                      sub: "Build & publish tests",
-                      target: "post",
-                      accent: "var(--green)",
-                    },
-                    {
-                      icon: "🏆",
-                      label: "Leaderboard",
-                      sub: "Rankings & history",
-                      target: "ranking",
-                      accent: "#a78bfa",
-                    },
-                  ].map((c) => (
-                    <div
-                      key={c.target}
-                      className="card-hover"
-                      onClick={() => setView(c.target)}
-                      style={{
-                        background: "var(--panel)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 18,
-                        padding: "22px 20px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div style={{ fontSize: 28, marginBottom: 10 }}>
-                        {c.icon}
-                      </div>
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 14,
+                      marginBottom: 24,
+                    }}
+                  >
+                    {[
+                      {
+                        icon: "🎯",
+                        label: "Attend Quiz",
+                        sub: "Take active tests",
+                        target: "attend",
+                        accent: "var(--teal)",
+                      },
+                      {
+                        icon: "📖",
+                        label: "Solutions Archive",
+                        sub: "Gated answer keys",
+                        target: "archive",
+                        accent: "var(--amber)",
+                      },
+                      {
+                        icon: "➕",
+                        label: "Post Quiz",
+                        sub: "Build & publish tests",
+                        target: "post",
+                        accent: "var(--green)",
+                      },
+                      {
+                        icon: "🏆",
+                        label: "Leaderboard",
+                        sub: "Rankings & history",
+                        target: "ranking",
+                        accent: "#a78bfa",
+                      },
+                    ].map((c) => (
                       <div
+                        key={c.target}
+                        className="card-hover"
+                        onClick={() => setView(c.target)}
                         style={{
-                          fontWeight: 700,
-                          fontSize: 14,
-                          marginBottom: 4,
+                          background: "var(--panel)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 18,
+                          padding: "22px 20px",
+                          cursor: "pointer",
                         }}
                       >
-                        {c.label}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                        {c.sub}
-                      </div>
-                      <div
-                        style={{
-                          marginTop: 14,
-                          height: 2,
-                          width: 32,
-                          background: c.accent,
-                          borderRadius: 2,
-                        }}
-                      />
-                    </div>
-                  ))}
-                  {user.id === "E1550484" && (
-                    <div
-                      className="card-hover"
-                      onClick={() => setView("admin")}
-                      style={{
-                        background: "var(--panel)",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        borderRadius: 18,
-                        padding: "22px 20px",
-                        cursor: "pointer",
-                        gridColumn: "1 / -1",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <div style={{ fontSize: 28 }}>📈</div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>
-                            Lead Hub — Audits
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "var(--text-faint)",
-                              marginTop: 2,
-                            }}
-                          >
-                            Team performance & news management
-                          </div>
+                        <div style={{ fontSize: 28, marginBottom: 10 }}>
+                          {c.icon}
                         </div>
                         <div
                           style={{
-                            marginLeft: "auto",
-                            fontSize: 10,
-                            color: "var(--red)",
-                            letterSpacing: "0.1em",
-                            fontFamily: "'DM Mono',monospace",
-                            border: "1px solid rgba(239,68,68,0.3)",
-                            padding: "4px 10px",
-                            borderRadius: 20,
+                            fontWeight: 700,
+                            fontSize: 14,
+                            marginBottom: 4,
                           }}
                         >
-                          ADMIN
+                          {c.label}
+                        </div>
+                        <div
+                          style={{ fontSize: 11, color: "var(--text-faint)" }}
+                        >
+                          {c.sub}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 14,
+                            height: 2,
+                            width: 32,
+                            background: c.accent,
+                            borderRadius: 2,
+                          }}
+                        />
+                      </div>
+                    ))}
+                    {user.id === ADMIN_ID && (
+                      <div
+                        className="card-hover"
+                        onClick={() => setView("admin")}
+                        style={{
+                          background: "var(--panel)",
+                          border: "1px solid rgba(239,68,68,0.3)",
+                          borderRadius: 18,
+                          padding: "22px 20px",
+                          cursor: "pointer",
+                          gridColumn: "1 / -1",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
+                          <div style={{ fontSize: 28 }}>📈</div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>
+                              Lead Hub — Audits
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "var(--text-faint)",
+                                marginTop: 2,
+                              }}
+                            >
+                              Team performance & news management
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              marginLeft: "auto",
+                              fontSize: 10,
+                              color: "var(--red)",
+                              letterSpacing: "0.1em",
+                              fontFamily: "'DM Mono',monospace",
+                              border: "1px solid rgba(239,68,68,0.3)",
+                              padding: "4px 10px",
+                              borderRadius: 20,
+                            }}
+                          >
+                            ADMIN
+                          </div>
                         </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* CTC NEWS STRIP */}
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "var(--teal)",
+                            letterSpacing: "0.12em",
+                            textTransform: "uppercase",
+                            fontFamily: "'DM Mono',monospace",
+                          }}
+                        >
+                          Live Feed
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            marginTop: 2,
+                          }}
+                        >
+                          CTC Updates
+                        </div>
+                      </div>
+                      {newsLoading && (
+                        <div
+                          className="pulse"
+                          style={{ fontSize: 11, color: "var(--text-faint)" }}
+                        >
+                          Loading...
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                    {!newsLoading && sortedNews.length === 0 && (
+                      <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                        No updates posted yet.
+                      </div>
+                    )}
+                    <div className="news-scroll">
+                      {sortedNews.map((item) => (
+                        <NewsCard
+                          key={item.id}
+                          item={item}
+                          isAdmin={false}
+                          compact={true}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
 
-              {/* ── ATTEND ── */}
+              {/* ATTEND */}
               {view === "attend" && !activeQuiz && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 18 }}>
@@ -1369,11 +1688,9 @@ export default function App() {
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
-                            alignItems: "flex-start",
-                            marginBottom: 12,
+                            marginBottom: 10,
                           }}
                         >
-                          <CategoryBadge cat={q.category} />
                           <span
                             style={{
                               fontSize: 10,
@@ -1383,23 +1700,6 @@ export default function App() {
                           >
                             {q.author || "Lead"}
                           </span>
-                        </div>
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 15,
-                            marginBottom: 10,
-                          }}
-                        >
-                          {q.title}
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
                           <span
                             style={{
                               fontSize: 11,
@@ -1409,6 +1709,22 @@ export default function App() {
                           >
                             ⏱ {q.deadline || "No Limit"}
                           </span>
+                        </div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 15,
+                            marginBottom: 14,
+                          }}
+                        >
+                          {q.title}
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                          }}
+                        >
                           {!done ? (
                             <button
                               className="btn-ghost"
@@ -1434,7 +1750,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── ACTIVE QUIZ ── */}
+              {/* ACTIVE QUIZ */}
               {activeQuiz && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 20 }}>
@@ -1566,7 +1882,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── ARCHIVE LIST ── */}
+              {/* ARCHIVE LIST */}
               {view === "archive" && !archiveQuiz && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 18 }}>
@@ -1591,7 +1907,7 @@ export default function App() {
                     const hasTaken =
                       results.some(
                         (r) => r.userId === user.id && r.quizId === q.id
-                      ) || user.id === "E1550484";
+                      ) || user.id === ADMIN_ID;
                     return (
                       <div
                         key={q.id}
@@ -1642,7 +1958,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── ARCHIVE DETAIL ── */}
+              {/* ARCHIVE DETAIL */}
               {archiveQuiz && (
                 <div className="fadeIn">
                   <button
@@ -1705,7 +2021,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── POST QUIZ ── */}
+              {/* POST QUIZ */}
               {view === "post" && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 18 }}>
@@ -1741,23 +2057,13 @@ export default function App() {
                       value={newQuizTitle}
                       onChange={(e) => setNewQuizTitle(e.target.value)}
                     />
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <select
-                        className="field"
-                        style={{ flex: 1, marginBottom: 0 }}
-                        onChange={(e) => setCategory(e.target.value)}
-                      >
-                        <option>Mechanical</option>
-                        <option>Material</option>
-                        <option>Fluid</option>
-                      </select>
-                      <input
-                        type="date"
-                        className="field"
-                        style={{ flex: 1, marginBottom: 0 }}
-                        onChange={(e) => setDeadline(e.target.value)}
-                      />
-                    </div>
+                    <input
+                      type="date"
+                      className="field"
+                      style={{ marginBottom: 0 }}
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                    />
                   </div>
                   <div
                     style={{
@@ -1888,27 +2194,49 @@ export default function App() {
                         cursor: "pointer",
                         marginTop: 12,
                       }}
-                      onClick={() => {
-                        if (!qText.trim()) return alert("Enter a question");
-                        setAddedQuestions([
-                          ...addedQuestions,
-                          {
-                            type: qType,
-                            text: qText,
-                            image: qType === "Picture" ? qImgUrl : null,
-                            options: qType === "MCQ" ? [...mcqOptions] : null,
-                            correct:
-                              qType === "MCQ" ? mcqOptions[correctIdx] : ansKey,
-                          },
-                        ]);
-                        setQText("");
-                        setAnsKey("");
-                        alert("Question added!");
-                      }}
+                      onClick={addQuestion}
                     >
-                      + Add Question ({addedQuestions.length} added)
+                      + Add Question
                     </button>
                   </div>
+
+                  {addedQuestions.length > 0 && (
+                    <button
+                      onClick={() => setShowDraftModal(true)}
+                      style={{
+                        width: "100%",
+                        padding: "12px 20px",
+                        background: "rgba(0,212,184,0.07)",
+                        border: "1px solid var(--border-teal)",
+                        borderRadius: 12,
+                        color: "var(--teal)",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        marginBottom: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "'DM Mono',monospace",
+                          background: "var(--teal)",
+                          color: "var(--navy)",
+                          borderRadius: 20,
+                          padding: "1px 8px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {addedQuestions.length}
+                      </span>
+                      Preview &amp; Edit Draft Questions
+                    </button>
+                  )}
+
                   <button
                     className="btn-primary"
                     style={{ background: "var(--green)" }}
@@ -1919,7 +2247,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── RANKING ── */}
+              {/* RANKING */}
               {view === "ranking" && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 18 }}>
@@ -2093,8 +2421,8 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── ADMIN ── */}
-              {view === "admin" && user.id === "E1550484" && (
+              {/* ADMIN */}
+              {view === "admin" && user.id === ADMIN_ID && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 20 }}>
                     <div
@@ -2114,8 +2442,6 @@ export default function App() {
                       Lead Hub
                     </div>
                   </div>
-
-                  {/* ── NEWS MANAGEMENT ── */}
                   <div
                     style={{
                       background: "var(--panel)",
@@ -2171,8 +2497,6 @@ export default function App() {
                         {showNewsForm ? "✕ Cancel" : "+ Add News"}
                       </button>
                     </div>
-
-                    {/* News form */}
                     {showNewsForm && (
                       <div
                         className="slideIn"
@@ -2259,8 +2583,6 @@ export default function App() {
                         </button>
                       </div>
                     )}
-
-                    {/* Existing news items with admin controls */}
                     {newsLoading && (
                       <div
                         className="pulse"
@@ -2271,7 +2593,7 @@ export default function App() {
                     )}
                     {!newsLoading && sortedNews.length === 0 && (
                       <div style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                        No news items yet. Add one above.
+                        No news items yet.
                       </div>
                     )}
                     <div
@@ -2292,8 +2614,6 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-
-                  {/* ── TEAM AUDITS ── */}
                   <div
                     style={{
                       fontSize: 11,
@@ -2408,7 +2728,7 @@ export default function App() {
           )}
         </div>
 
-        {/* ── BOTTOM NAV ── */}
+        {/* BOTTOM NAV */}
         {user && (
           <nav
             style={{
@@ -2449,7 +2769,7 @@ export default function App() {
                     view === n.key
                       ? "2px solid var(--teal)"
                       : "2px solid transparent",
-                  transition: "opacity 0.2s, border-color 0.2s",
+                  transition: "opacity 0.2s,border-color 0.2s",
                 }}
               >
                 {n.icon}
