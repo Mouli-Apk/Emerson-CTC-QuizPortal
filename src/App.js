@@ -111,11 +111,6 @@ const STYLES = `
   .draft-item{background:var(--navy);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;transition:border-color 0.2s;}
   .draft-item:hover{border-color:rgba(0,212,184,0.2);}
 
-  /* Date input — white text & calendar icon */
-  input[type="date"]{color-scheme:dark;color:#fff;}
-  input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(2);cursor:pointer;opacity:0.85;}
-  input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1;}
-
   /* File upload button */
   input[type="file"]{display:none;}
   .file-upload-btn{display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;background:var(--navy3);border:1px dashed rgba(0,212,184,0.4);color:var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:border-color 0.2s,background 0.2s;}
@@ -1056,7 +1051,7 @@ export default function App() {
                 <img
                   src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Emerson_Electric_Company.svg/3840px-Emerson_Electric_Company.svg.png"
                   style={{
-                    height: 32,
+                    height: 28,
                     filter: "brightness(0) invert(1)",
                     opacity: 0.7,
                   }}
@@ -2205,13 +2200,33 @@ export default function App() {
                     >
                       Deadline (optional)
                     </label>
-                    <input
-                      type="date"
-                      className="field"
-                      style={{ marginBottom: 0 }}
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                    />
+                    <div style={{ position: "relative", marginBottom: 0 }}>
+                      <input
+                        type="date"
+                        className="field"
+                        value={deadline}
+                        onChange={(e) => setDeadline(e.target.value)}
+                        style={{
+                          marginBottom: 0,
+                          paddingRight: 44,
+                          colorScheme: "dark",
+                          color: deadline ? "#fff" : "var(--text-faint)",
+                        }}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          right: 14,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          fontSize: 18,
+                          pointerEvents: "none",
+                          userSelect: "none",
+                        }}
+                      >
+                        📅
+                      </span>
+                    </div>
                   </div>
 
                   {/* Question builder */}
