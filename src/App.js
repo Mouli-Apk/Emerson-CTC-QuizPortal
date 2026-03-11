@@ -823,7 +823,7 @@ function ResultReviewModal({ result, quiz, onClose }) {
         </div>
 
         {/* Per-question breakdown */}
-        {(result.shuffledQuestions || quiz.questions).map((q, i) => {
+        {quiz.questions.map((q, i) => {
           const userAns = (result.responses?.[i] || "").trim();
           const isCorrect =
             userAns.toLowerCase() === (q.correct || "").trim().toLowerCase();
@@ -1111,7 +1111,6 @@ export default function App() {
           submittedAt: new Date(),
           flagged: true,
           flagReason: "Auto-submitted: 3 integrity violations",
-          shuffledQuestions: q.questions,
         });
       }
       return null;
@@ -1150,8 +1149,13 @@ export default function App() {
     setShowWarning(false);
     setCurrentQIdx(0);
     setUserAnswers({});
-    // Shuffle questions for each attempt
-    const shuffled = { ...q, questions: shuffleArray(q.questions) };
+    // Build a shuffled index array so we can remap answers back to original order on submit
+    const indices = shuffleArray(q.questions.map((_, i) => i));
+    const shuffled = {
+      ...q,
+      questions: indices.map((i) => q.questions[i]),
+      shuffledOrder: indices, // e.g. [2,0,3,1] → shuffled[0] was originally q.questions[2]
+    };
     setActiveQuiz(shuffled);
     enterFullscreen();
   };
@@ -1171,6 +1175,17 @@ export default function App() {
         score++;
     });
 
+    // Remap responses: userAnswers keys are shuffled indices → convert to original indices
+    // so the review modal can compare against quiz.questions (original order) correctly
+    const remappedResponses = {};
+    (activeQuiz.shuffledOrder || activeQuiz.questions.map((_, i) => i)).forEach(
+      (origIdx, shuffledIdx) => {
+        if (userAnswers[shuffledIdx] !== undefined) {
+          remappedResponses[origIdx] = userAnswers[shuffledIdx];
+        }
+      }
+    );
+
     await addDoc(collection(db, "results"), {
       userId: user.id,
       userName: user.name,
@@ -1178,11 +1193,9 @@ export default function App() {
       quizTitle: activeQuiz.title,
       score,
       total: activeQuiz.questions.length,
-      responses: userAnswers,
+      responses: remappedResponses,
       submittedAt: new Date(),
       flagged: false,
-      // Store shuffled order so review modal can match answers correctly
-      shuffledQuestions: activeQuiz.questions,
     });
 
     const msg = `✅ Final Marks: ${score} / ${activeQuiz.questions.length}`;
