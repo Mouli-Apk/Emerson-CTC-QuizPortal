@@ -1149,14 +1149,7 @@ export default function App() {
     setShowWarning(false);
     setCurrentQIdx(0);
     setUserAnswers({});
-    // Build a shuffled index array so we can remap answers back to original order on submit
-    const indices = shuffleArray(q.questions.map((_, i) => i));
-    const shuffled = {
-      ...q,
-      questions: indices.map((i) => q.questions[i]),
-      shuffledOrder: indices, // e.g. [2,0,3,1] → shuffled[0] was originally q.questions[2]
-    };
-    setActiveQuiz(shuffled);
+    setActiveQuiz(q);
     enterFullscreen();
   };
 
@@ -1175,17 +1168,6 @@ export default function App() {
         score++;
     });
 
-    // Remap responses: userAnswers keys are shuffled indices → convert to original indices
-    // so the review modal can compare against quiz.questions (original order) correctly
-    const remappedResponses = {};
-    (activeQuiz.shuffledOrder || activeQuiz.questions.map((_, i) => i)).forEach(
-      (origIdx, shuffledIdx) => {
-        if (userAnswers[shuffledIdx] !== undefined) {
-          remappedResponses[origIdx] = userAnswers[shuffledIdx];
-        }
-      }
-    );
-
     await addDoc(collection(db, "results"), {
       userId: user.id,
       userName: user.name,
@@ -1193,7 +1175,7 @@ export default function App() {
       quizTitle: activeQuiz.title,
       score,
       total: activeQuiz.questions.length,
-      responses: remappedResponses,
+      responses: userAnswers,
       submittedAt: new Date(),
       flagged: false,
     });
