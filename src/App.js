@@ -823,7 +823,7 @@ function ResultReviewModal({ result, quiz, onClose }) {
         </div>
 
         {/* Per-question breakdown */}
-        {quiz.questions.map((q, i) => {
+        {(result.shuffledQuestions || quiz.questions).map((q, i) => {
           const userAns = (result.responses?.[i] || "").trim();
           const isCorrect =
             userAns.toLowerCase() === (q.correct || "").trim().toLowerCase();
@@ -1111,6 +1111,7 @@ export default function App() {
           submittedAt: new Date(),
           flagged: true,
           flagReason: "Auto-submitted: 3 integrity violations",
+          shuffledQuestions: q.questions,
         });
       }
       return null;
@@ -1180,6 +1181,8 @@ export default function App() {
       responses: userAnswers,
       submittedAt: new Date(),
       flagged: false,
+      // Store shuffled order so review modal can match answers correctly
+      shuffledQuestions: activeQuiz.questions,
     });
 
     const msg = `✅ Final Marks: ${score} / ${activeQuiz.questions.length}`;
