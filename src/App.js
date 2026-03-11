@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -10,9 +10,7 @@ import {
   doc,
   setDoc,
   getDoc,
-  updateDoc,
   deleteDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -66,15 +64,25 @@ const hashPassword = async (pw) => {
     .join("");
 };
 
+// Fisher-Yates shuffle
+const shuffleArray = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   :root{
-    --navy:#0a0f1e; --navy3:#1a2235; --panel:#141b2d;
-    --teal:#00d4b8; --teal2:#00b89e; --teal-dim:rgba(0,212,184,0.12); --teal-glow:rgba(0,212,184,0.25);
-    --amber:#f59e0b; --red:#ef4444; --green:#22c55e;
-    --text:#edf2f7; --text-dim:#b8c8d8; --text-faint:#8096b0;
-    --border:rgba(255,255,255,0.09); --border-teal:rgba(0,212,184,0.3);
+    --navy:#0a0f1e;--navy3:#1a2235;--panel:#141b2d;
+    --teal:#00d4b8;--teal2:#00b89e;--teal-dim:rgba(0,212,184,0.12);--teal-glow:rgba(0,212,184,0.25);
+    --amber:#f59e0b;--red:#ef4444;--green:#22c55e;
+    --text:#edf2f7;--text-dim:#b8c8d8;--text-faint:#8096b0;
+    --border:rgba(255,255,255,0.09);--border-teal:rgba(0,212,184,0.3);
   }
   body{background:var(--navy);color:var(--text);font-family:'Sora',sans-serif;}
   input,select,textarea,button{font-family:'Sora',sans-serif;}
@@ -106,12 +114,18 @@ const STYLES = `
   .pw-rule{font-size:11px;padding:3px 0;display:flex;align-items:center;gap:6px;}
   .pw-rule.pass{color:var(--green);}
   .pw-rule.fail{color:var(--text-faint);}
-  .modal-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.2s ease;}
-  .modal-box{background:var(--panel);border:1px solid var(--border-teal);border-radius:20px;padding:28px;width:100%;max-width:560px;max-height:82vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 40px rgba(0,212,184,0.08);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.88);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.2s ease;}
+  .modal-box{background:var(--panel);border:1px solid var(--border-teal);border-radius:20px;padding:28px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 40px rgba(0,212,184,0.08);}
   .draft-item{background:var(--navy);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;transition:border-color 0.2s;}
   .draft-item:hover{border-color:rgba(0,212,184,0.2);}
 
-  /* File upload button */
+  /* Password eye */
+  .pw-wrap{position:relative;margin-bottom:12px;}
+  .pw-wrap .field{margin-bottom:0;padding-right:46px;}
+  .pw-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#fff;font-size:15px;padding:4px;line-height:1;opacity:0.75;display:flex;align-items:center;justify-content:center;}
+  .pw-eye:hover{opacity:1;}
+
+  /* File upload */
   input[type="file"]{display:none;}
   .file-upload-btn{display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;background:var(--navy3);border:1px dashed rgba(0,212,184,0.4);color:var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:border-color 0.2s,background 0.2s;}
   .file-upload-btn:hover{background:var(--teal-dim);border-color:var(--teal);}
@@ -119,33 +133,45 @@ const STYLES = `
   /* Top nav */
   .top-nav-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;transition:border-color 0.2s,opacity 0.2s;flex:1;}
   .top-nav-btn.active{border-bottom-color:var(--teal);}
-  .top-nav-btn:hover .nav-tooltip{opacity:1;transform:translateY(0);}
+  .top-nav-btn:not([disabled]):hover .nav-tooltip{opacity:1;transform:translateX(-50%) translateY(0);}
+  .top-nav-btn[disabled]{cursor:not-allowed;}
   .nav-tooltip{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(-4px);background:var(--navy3);border:1px solid var(--border-teal);color:var(--teal);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s;z-index:300;}
   .nav-tooltip::before{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);border:4px solid transparent;border-bottom-color:var(--border-teal);}
 
+  /* Nav pending badge */
+  .nav-badge{position:absolute;top:3px;right:5px;background:var(--red);color:#fff;border-radius:20px;min-width:16px;height:16px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 6px rgba(239,68,68,0.5);}
+
   /* Quiz security */
   .no-select{-webkit-user-select:none;-moz-user-select:none;user-select:none;}
-  .watermark{
-    position:fixed;inset:0;pointer-events:none;z-index:150;
-    display:flex;align-items:center;justify-content:center;
-    opacity:0.045;transform:rotate(-30deg);
-    font-size:clamp(18px,4vw,32px);font-weight:900;color:#fff;
-    font-family:'DM Mono',monospace;letter-spacing:0.08em;
-    white-space:nowrap;text-align:center;line-height:1.8;
-    text-transform:uppercase;
-  }
-  .strike-overlay{
-    position:fixed;inset:0;z-index:500;background:rgba(5,5,15,0.93);
-    display:flex;align-items:center;justify-content:center;padding:24px;
-    animation:fadeIn 0.2s ease;
-  }
-  .strike-box{
-    background:#12192b;border:1px solid rgba(239,68,68,0.5);border-radius:20px;
-    padding:36px 32px;max-width:380px;width:100%;text-align:center;
-    box-shadow:0 0 60px rgba(239,68,68,0.15);
-  }
+  .watermark{position:fixed;inset:0;pointer-events:none;z-index:150;display:flex;align-items:center;justify-content:center;opacity:0.045;transform:rotate(-30deg);font-size:clamp(18px,4vw,32px);font-weight:900;color:#fff;font-family:'DM Mono',monospace;letter-spacing:0.08em;white-space:nowrap;text-align:center;line-height:1.8;text-transform:uppercase;}
+  .strike-overlay{position:fixed;inset:0;z-index:500;background:rgba(5,5,15,0.95);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.2s ease;}
+  .strike-box{background:#12192b;border:1px solid rgba(239,68,68,0.5);border-radius:20px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(239,68,68,0.15);}
+
+  /* Quiz pagination nav */
+  .q-nav-btn{flex:1;padding:13px;border-radius:10px;font-weight:700;font-size:13px;letter-spacing:0.04em;cursor:pointer;transition:all 0.2s;border:1px solid var(--border-teal);background:var(--navy3);color:var(--teal);}
+  .q-nav-btn:hover:not(:disabled){background:var(--teal-dim);}
+  .q-nav-btn.submit-btn{background:var(--teal);color:var(--navy);border-color:var(--teal);}
+  .q-nav-btn.submit-btn:hover:not(:disabled){background:var(--teal2);}
+  .q-nav-btn:disabled{opacity:0.3;cursor:not-allowed;}
+
+  /* Q dot navigator */
+  .q-dot{width:26px;height:26px;border-radius:7px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;border:1px solid var(--border);}
+  .q-dot.answered{background:var(--teal);color:var(--navy);border-color:var(--teal);}
+  .q-dot.current{border-color:var(--teal);color:var(--teal);}
+  .q-dot.unanswered{background:var(--navy3);color:var(--text-faint);}
+
+  /* Answer review cards */
+  .ans-card-correct{background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:14px;padding:18px 20px;margin-bottom:12px;}
+  .ans-card-wrong{background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:14px;padding:18px 20px;margin-bottom:12px;}
+
+  /* Scheduled badge */
+  .sched-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 8px;border-radius:20px;background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.3);}
+
+  /* Pending badge on home card */
+  .home-badge{position:absolute;top:14px;right:14px;background:var(--red);color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;}
 `;
 
+/* ─── Avatar ─── */
 function Avatar({ name, size = 36 }) {
   const initials = name
     .split(" ")
@@ -179,6 +205,7 @@ function Avatar({ name, size = 36 }) {
   );
 }
 
+/* ─── StatChip ─── */
 function StatChip({ label, value, accent }) {
   return (
     <div
@@ -215,10 +242,128 @@ function StatChip({ label, value, accent }) {
   );
 }
 
+/* ─── Password field with visible eye icon ─── */
+function PwField({ value, onChange, placeholder, onKeyDown, hasError }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="pw-wrap">
+      <input
+        className={`field${hasError ? " error" : ""}`}
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+      />
+      <button
+        className="pw-eye"
+        type="button"
+        tabIndex={-1}
+        onClick={() => setShow((s) => !s)}
+      >
+        {show ? (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+          </svg>
+        ) : (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Image Uploader ─── */
+function ImageUploader({ value, onChange }) {
+  const ref = useRef();
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => onChange(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <input type="file" accept="image/*" ref={ref} onChange={handleFile} />
+      <label className="file-upload-btn" onClick={() => ref.current.click()}>
+        <span>📎</span>
+        {value
+          ? "Image selected — click to change"
+          : "Attach image from device (optional)"}
+      </label>
+      {value && (
+        <div
+          style={{
+            position: "relative",
+            display: "inline-block",
+            marginTop: 4,
+          }}
+        >
+          <img
+            src={value}
+            alt="preview"
+            style={{
+              maxWidth: "100%",
+              maxHeight: 140,
+              borderRadius: 10,
+              border: "1px solid var(--border-teal)",
+              display: "block",
+            }}
+          />
+          <button
+            onClick={() => onChange(null)}
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              background: "rgba(239,68,68,0.8)",
+              border: "none",
+              color: "#fff",
+              borderRadius: "50%",
+              width: 22,
+              height: 22,
+              fontSize: 12,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Draft Modal ─── */
 function DraftModal({ questions, onClose, onDelete, onEdit }) {
   const [editIdx, setEditIdx] = useState(null);
   const [editData, setEditData] = useState(null);
-
   const startEdit = (i) => {
     setEditIdx(i);
     setEditData({
@@ -281,7 +426,6 @@ function DraftModal({ questions, onClose, onDelete, onEdit }) {
             ✕
           </button>
         </div>
-
         {questions.length === 0 && (
           <div
             style={{
@@ -294,7 +438,6 @@ function DraftModal({ questions, onClose, onDelete, onEdit }) {
             No questions added yet.
           </div>
         )}
-
         {questions.map((q, i) => (
           <div key={i} className="draft-item">
             {editIdx === i ? (
@@ -356,14 +499,12 @@ function DraftModal({ questions, onClose, onDelete, onEdit }) {
                           value={opt}
                           onChange={(e) => {
                             const o = [...editData.options];
-                            const wasCorrect = editData.correct === opt;
+                            const wc = editData.correct === opt;
                             o[oi] = e.target.value;
                             setEditData({
                               ...editData,
                               options: o,
-                              correct: wasCorrect
-                                ? e.target.value
-                                : editData.correct,
+                              correct: wc ? e.target.value : editData.correct,
                             });
                           }}
                         />
@@ -540,66 +681,77 @@ function DraftModal({ questions, onClose, onDelete, onEdit }) {
   );
 }
 
-// Image upload helper — converts local file to base64 data URL
-function ImageUploader({ value, onChange }) {
-  const fileInputRef = React.useRef();
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => onChange(ev.target.result);
-    reader.readAsDataURL(file);
-  };
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <input
-        type="file"
-        accept="image/*"
-        ref={fileInputRef}
-        onChange={handleFile}
-      />
-      <label
-        className="file-upload-btn"
-        onClick={() => fileInputRef.current.click()}
+/* ─── Result Review Modal ─── */
+function ResultReviewModal({ result, quiz, onClose }) {
+  if (!quiz)
+    return (
+      <div
+        className="modal-overlay"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        <span>📎</span>
-        {value
-          ? "Image selected — click to change"
-          : "Attach image from device (optional)"}
-      </label>
-      {value && (
+        <div className="modal-box">
+          <p
+            style={{
+              color: "var(--text-faint)",
+              textAlign: "center",
+              padding: "32px 0",
+            }}
+          >
+            Quiz data unavailable.
+          </p>
+          <button className="btn-primary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    );
+
+  const correct = result.score || 0;
+  const wrong = (result.total || 0) - correct;
+  const pct = result.total ? Math.round((correct / result.total) * 100) : 0;
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-box">
+        {/* Header */}
         <div
           style={{
-            position: "relative",
-            display: "inline-block",
-            marginTop: 4,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 20,
           }}
         >
-          <img
-            src={value}
-            alt="preview"
-            style={{
-              maxWidth: "100%",
-              maxHeight: 140,
-              borderRadius: 10,
-              border: "1px solid var(--border-teal)",
-              display: "block",
-            }}
-          />
+          <div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--teal)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                fontFamily: "'DM Mono',monospace",
+              }}
+            >
+              Answer Review
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 3 }}>
+              {quiz.title}
+            </div>
+          </div>
           <button
-            onClick={() => onChange(null)}
+            onClick={onClose}
             style={{
-              position: "absolute",
-              top: 6,
-              right: 6,
-              background: "rgba(239,68,68,0.8)",
-              border: "none",
-              color: "#fff",
-              borderRadius: "50%",
-              width: 22,
-              height: 22,
-              fontSize: 12,
+              background: "none",
+              border: "1px solid var(--border)",
+              color: "var(--text-faint)",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
               cursor: "pointer",
+              fontSize: 16,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -608,12 +760,212 @@ function ImageUploader({ value, onChange }) {
             ✕
           </button>
         </div>
-      )}
+
+        {/* Score summary */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 22 }}>
+          {[
+            {
+              label: "Correct",
+              val: correct,
+              color: "var(--green)",
+              bg: "rgba(34,197,94,0.1)",
+              border: "rgba(34,197,94,0.3)",
+            },
+            {
+              label: "Wrong",
+              val: wrong,
+              color: "var(--red)",
+              bg: "rgba(239,68,68,0.1)",
+              border: "rgba(239,68,68,0.3)",
+            },
+            {
+              label: "Score",
+              val: pct + "%",
+              color: "var(--teal)",
+              bg: "var(--navy3)",
+              border: "var(--border)",
+            },
+          ].map((s) => (
+            <div
+              key={s.label}
+              style={{
+                flex: 1,
+                background: s.bg,
+                border: `1px solid ${s.border}`,
+                borderRadius: 10,
+                padding: "12px 8px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: s.color,
+                  fontFamily: "'DM Mono',monospace",
+                }}
+              >
+                {s.val}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--text-faint)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  marginTop: 2,
+                }}
+              >
+                {s.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Per-question breakdown */}
+        {quiz.questions.map((q, i) => {
+          const userAns = (result.responses?.[i] || "").trim();
+          const isCorrect =
+            userAns.toLowerCase() === (q.correct || "").trim().toLowerCase();
+          return (
+            <div
+              key={i}
+              className={isCorrect ? "ans-card-correct" : "ans-card-wrong"}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  fontFamily: "'DM Mono',monospace",
+                  color: "var(--text-faint)",
+                  marginBottom: 6,
+                }}
+              >
+                Q{String(i + 1).padStart(2, "0")} ·{" "}
+                {isCorrect ? (
+                  <span style={{ color: "var(--green)" }}>✓ CORRECT</span>
+                ) : (
+                  <span style={{ color: "var(--red)" }}>✗ INCORRECT</span>
+                )}
+              </div>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  marginBottom: 12,
+                }}
+              >
+                {q.text}
+              </div>
+
+              {/* MCQ: show all options colour-coded */}
+              {q.options ? (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  {q.options.map((opt, oi) => {
+                    const isCorrectOpt = opt === q.correct;
+                    const isUserChoice = userAns === opt;
+                    let bg = "var(--navy3)",
+                      border = "1px solid var(--border)",
+                      color = "var(--text-dim)";
+                    if (isCorrectOpt) {
+                      bg = "rgba(34,197,94,0.12)";
+                      border = "1px solid rgba(34,197,94,0.4)";
+                      color = "var(--green)";
+                    }
+                    if (isUserChoice && !isCorrectOpt) {
+                      bg = "rgba(239,68,68,0.12)";
+                      border = "1px solid rgba(239,68,68,0.4)";
+                      color = "var(--red)";
+                    }
+                    return (
+                      <div
+                        key={oi}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 12px",
+                          borderRadius: 8,
+                          background: bg,
+                          border,
+                          color,
+                          fontWeight: isCorrectOpt || isUserChoice ? 600 : 400,
+                          fontSize: 13,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "'DM Mono',monospace",
+                            fontSize: 10,
+                            opacity: 0.6,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {String.fromCharCode(65 + oi)}
+                        </span>
+                        <span style={{ flex: 1 }}>{opt}</span>
+                        {isCorrectOpt && <span>✓</span>}
+                        {isUserChoice && !isCorrectOpt && (
+                          <span style={{ fontSize: 11 }}>← Your answer</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Fill-blank */
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  <div
+                    style={{
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      background: isCorrect
+                        ? "rgba(34,197,94,0.12)"
+                        : "rgba(239,68,68,0.12)",
+                      border: `1px solid ${
+                        isCorrect
+                          ? "rgba(34,197,94,0.4)"
+                          : "rgba(239,68,68,0.4)"
+                      }`,
+                      color: isCorrect ? "var(--green)" : "var(--red)",
+                      fontSize: 13,
+                    }}
+                  >
+                    Your answer: {userAns || "(not answered)"}
+                  </div>
+                  {!isCorrect && (
+                    <div
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        background: "rgba(34,197,94,0.12)",
+                        border: "1px solid rgba(34,197,94,0.4)",
+                        color: "var(--green)",
+                        fontSize: 13,
+                      }}
+                    >
+                      ✓ Correct: {q.correct}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
+/* ══════════════════════════════════════════
+   MAIN APP
+══════════════════════════════════════════ */
 export default function App() {
+  // ── Auth ──
   const [loginStep, setLoginStep] = useState("id");
   const [authCode, setAuthCode] = useState("");
   const [foundMember, setFoundMember] = useState(null);
@@ -623,32 +975,48 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [user, setUser] = useState(null);
+
+  // ── App state ──
   const [view, setView] = useState("home");
   const [loading, setLoading] = useState(true);
   const [quizzes, setQuizzes] = useState([]);
   const [results, setResults] = useState([]);
+  const [archiveQuiz, setArchiveQuiz] = useState(null);
+  const [reviewResult, setReviewResult] = useState(null); // for answer review modal
+
+  // ── Quiz session ──
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
-  const [archiveQuiz, setArchiveQuiz] = useState(null);
+  const [currentQIdx, setCurrentQIdx] = useState(0);
 
-  // ── QUIZ SECURITY STATE ──
+  // FIX: refs to prevent double-submit / double flag
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Quiz security ──
   const [strikes, setStrikes] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
   const [warningReason, setWarningReason] = useState("");
-  const [quizFlagged, setQuizFlagged] = useState(false);
   const MAX_STRIKES = 3;
 
+  // ── Post quiz ──
   const [newQuizTitle, setNewQuizTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [addedQuestions, setAddedQuestions] = useState([]);
   const [qType, setQType] = useState("MCQ");
   const [qText, setQText] = useState("");
-  const [qImage, setQImage] = useState(null); // base64 local image
+  const [qImage, setQImage] = useState(null);
   const [mcqOptions, setMcqOptions] = useState(["", "", ""]);
   const [correctIdx, setCorrectIdx] = useState(0);
   const [ansKey, setAnsKey] = useState("");
   const [showDraftModal, setShowDraftModal] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
+  // ── Scheduled publish ──
+  const [postType, setPostType] = useState("now"); // "now" | "later"
+  const [scheduledAt, setScheduledAt] = useState("");
+
+  // ── Session restore ──
   useEffect(() => {
     const checkSession = async () => {
       const saved = localStorage.getItem("npd_portal_id");
@@ -668,6 +1036,7 @@ export default function App() {
     checkSession();
   }, []);
 
+  // ── Data fetch ──
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
@@ -683,37 +1052,38 @@ export default function App() {
     fetchData();
   }, [user, view, activeQuiz]);
 
-  // ── QUIZ SECURITY: fullscreen + visibility + blur listeners ──
+  // ── Quiz security listeners ──
   useEffect(() => {
     if (!activeQuiz) return;
-    const handleVisibility = () => {
+    const onVisibility = () => {
       if (document.hidden) triggerStrike("Tab switch detected");
     };
-    const handleBlur = () => {
-      if (activeQuiz) triggerStrike("Window left");
+    const onBlur = () => {
+      triggerStrike("Window left");
     };
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && activeQuiz)
-        triggerStrike("Fullscreen exited");
+    const onFullscreen = () => {
+      if (!document.fullscreenElement) triggerStrike("Fullscreen exited");
     };
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleBlur);
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("fullscreenchange", onFullscreen);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("fullscreenchange", onFullscreen);
     };
     // eslint-disable-next-line
   }, [activeQuiz]);
 
+  // FIX: block strike events if already submitting (alert() triggers blur)
   const triggerStrike = (reason) => {
+    if (submittingRef.current) return;
     setStrikes((prev) => {
       const next = prev + 1;
       setWarningReason(reason);
       if (next >= MAX_STRIKES) {
         setShowWarning(false);
-        autoSubmitFlagged();
+        doAutoSubmit();
       } else {
         setShowWarning(true);
       }
@@ -721,32 +1091,43 @@ export default function App() {
     });
   };
 
-  const autoSubmitFlagged = async () => {
-    setQuizFlagged(true);
+  // FIX: single-write guard via submittingRef
+  const doAutoSubmit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+
+    // Capture quiz before clearing state
     setActiveQuiz((q) => {
-      if (!q) return q;
-      (async (quiz) => {
-        await addDoc(collection(db, "results"), {
+      if (q) {
+        addDoc(collection(db, "results"), {
           userId: user.id,
           userName: user.name,
-          quizId: quiz.id,
-          quizTitle: quiz.title,
+          quizId: q.id,
+          quizTitle: q.title,
           score: 0,
-          total: quiz.questions.length,
+          total: q.questions.length,
           responses: {},
           submittedAt: new Date(),
           flagged: true,
           flagReason: "Auto-submitted: 3 integrity violations",
         });
-      })(q);
+      }
       return null;
     });
+
     exitFullscreen();
     setUserAnswers({});
     setStrikes(0);
+    setCurrentQIdx(0);
+    setIsSubmitting(false);
     setView("home");
-    alert(
-      "⚠️ Quiz auto-submitted due to 3 integrity violations. Your attempt has been flagged."
+    setTimeout(
+      () =>
+        alert(
+          "⚠️ Quiz auto-submitted due to 3 integrity violations. Your attempt has been flagged."
+        ),
+      150
     );
   };
 
@@ -755,7 +1136,6 @@ export default function App() {
     if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
   };
-
   const exitFullscreen = () => {
     if (document.fullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
@@ -764,13 +1144,56 @@ export default function App() {
   };
 
   const startQuiz = (q) => {
+    submittingRef.current = false;
     setStrikes(0);
-    setQuizFlagged(false);
     setShowWarning(false);
-    setActiveQuiz(q);
+    setCurrentQIdx(0);
+    setUserAnswers({});
+    // Shuffle questions for each attempt
+    const shuffled = { ...q, questions: shuffleArray(q.questions) };
+    setActiveQuiz(shuffled);
     enterFullscreen();
   };
 
+  // FIX: single-write guard on normal submit
+  const submitTest = async () => {
+    if (submittingRef.current || isSubmitting) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+
+    let score = 0;
+    activeQuiz.questions.forEach((q, i) => {
+      if (
+        (userAnswers[i] || "").trim().toLowerCase() ===
+        (q.correct || "").trim().toLowerCase()
+      )
+        score++;
+    });
+
+    await addDoc(collection(db, "results"), {
+      userId: user.id,
+      userName: user.name,
+      quizId: activeQuiz.id,
+      quizTitle: activeQuiz.title,
+      score,
+      total: activeQuiz.questions.length,
+      responses: userAnswers,
+      submittedAt: new Date(),
+      flagged: false,
+    });
+
+    const msg = `✅ Final Marks: ${score} / ${activeQuiz.questions.length}`;
+    exitFullscreen();
+    setActiveQuiz(null);
+    setUserAnswers({});
+    setStrikes(0);
+    setCurrentQIdx(0);
+    setIsSubmitting(false);
+    setView("home");
+    setTimeout(() => alert(msg), 150);
+  };
+
+  // ── Auth handlers ──
   const handleIdSubmit = async () => {
     setAuthError("");
     const id = authCode.toUpperCase().trim();
@@ -784,7 +1207,7 @@ export default function App() {
       const snap = await getDoc(doc(db, "users", id));
       setFoundMember(member);
       setLoginStep(snap.exists() ? "password" : "create");
-    } catch (e) {
+    } catch {
       setAuthError("Connection error. Try again.");
     }
     setAuthLoading(false);
@@ -803,7 +1226,7 @@ export default function App() {
       } else {
         setAuthError("Incorrect password. Try again.");
       }
-    } catch (e) {
+    } catch {
       setAuthError("Connection error. Try again.");
     }
     setAuthLoading(false);
@@ -832,59 +1255,51 @@ export default function App() {
       localStorage.setItem("npd_portal_id", foundMember.id);
       setUser({ id: foundMember.id, ...profile });
       setView("home");
-    } catch (e) {
+    } catch {
       setAuthError("Failed to create account. Try again.");
     }
     setAuthLoading(false);
   };
 
-  const submitTest = async () => {
-    let score = 0;
-    activeQuiz.questions.forEach((q, i) => {
-      if (
-        (userAnswers[i] || "").trim().toLowerCase() ===
-        (q.correct || "").trim().toLowerCase()
-      )
-        score++;
-    });
-    await addDoc(collection(db, "results"), {
-      userId: user.id,
-      userName: user.name,
-      quizId: activeQuiz.id,
-      quizTitle: activeQuiz.title,
-      score,
-      total: activeQuiz.questions.length,
-      responses: userAnswers,
-      submittedAt: new Date(),
-      flagged: false,
-    });
-    exitFullscreen();
-    alert(`Final Marks: ${score} / ${activeQuiz.questions.length}`);
-    setActiveQuiz(null);
-    setUserAnswers({});
-    setStrikes(0);
-    setView("home");
-  };
-
+  // FIX: single-write guard on publish
   const publishQuiz = async () => {
-    if (!newQuizTitle.trim()) return alert("Enter a quiz title");
-    if (!addedQuestions.length) return alert("Add at least one question");
-    await addDoc(collection(db, "quizzes"), {
-      title: newQuizTitle,
-      questions: addedQuestions,
-      author: user.name,
-      deadline,
-      createdAt: new Date(),
-    });
-    alert("Quiz published!");
-    setView("home");
-    setAddedQuestions([]);
-    setNewQuizTitle("");
-    setDeadline("");
+    if (isPublishing) return;
+    if (!newQuizTitle.trim()) return alert("Enter a quiz title.");
+    if (!addedQuestions.length) return alert("Add at least one question.");
+    if (postType === "later" && !scheduledAt)
+      return alert("Please choose a go-live date & time.");
+    setIsPublishing(true);
+    try {
+      await addDoc(collection(db, "quizzes"), {
+        title: newQuizTitle,
+        questions: addedQuestions,
+        author: user.name,
+        deadline,
+        createdAt: new Date(),
+        scheduledAt: postType === "later" ? scheduledAt : null,
+      });
+      const msg =
+        postType === "later"
+          ? `📅 Quiz scheduled for ${new Date(scheduledAt).toLocaleString(
+              "en-IN",
+              { timeZone: "Asia/Kolkata" }
+            )} IST`
+          : "🚀 Quiz published!";
+      setView("home");
+      setAddedQuestions([]);
+      setNewQuizTitle("");
+      setDeadline("");
+      setScheduledAt("");
+      setPostType("now");
+      setTimeout(() => alert(msg), 150);
+    } catch {
+      alert("Failed to publish. Try again.");
+    }
+    setIsPublishing(false);
   };
 
   const addQuestion = () => {
-    if (!qText.trim()) return alert("Enter a question");
+    if (!qText.trim()) return alert("Enter a question.");
     setAddedQuestions([
       ...addedQuestions,
       {
@@ -914,6 +1329,7 @@ export default function App() {
     setView("home");
   };
 
+  // ── Loading screen ──
   if (loading)
     return (
       <>
@@ -947,10 +1363,17 @@ export default function App() {
   const myResults = results.filter((r) => r.userId === user?.id);
   const myScore = myResults.reduce((s, c) => s + (c.score || 0), 0);
 
-  // Navigation items — includes Post Quiz
+  // Only quizzes that are live (scheduledAt in past or null)
+  const liveQuizzes = quizzes.filter(
+    (q) => !q.scheduledAt || new Date(q.scheduledAt) <= new Date()
+  );
+  const pendingCount = liveQuizzes.filter(
+    (q) => !results.some((r) => r.userId === user?.id && r.quizId === q.id)
+  ).length;
+
   const NAV_ITEMS = [
     { icon: "🏠", key: "home", label: "Home" },
-    { icon: "🎯", key: "attend", label: "Attend Quiz" },
+    { icon: "🎯", key: "attend", label: "Attend Quiz", badge: pendingCount },
     { icon: "📖", key: "archive", label: "Solutions" },
     { icon: "➕", key: "post", label: "Post Quiz" },
     { icon: "🏆", key: "ranking", label: "Rankings" },
@@ -959,9 +1382,13 @@ export default function App() {
       : []),
   ];
 
+  // Nav disabled while quiz is active
+  const navLocked = !!activeQuiz;
+
   return (
     <>
       <style>{STYLES}</style>
+
       {showDraftModal && (
         <DraftModal
           questions={addedQuestions}
@@ -974,6 +1401,14 @@ export default function App() {
             n[i] = u;
             setAddedQuestions(n);
           }}
+        />
+      )}
+
+      {reviewResult && (
+        <ResultReviewModal
+          result={reviewResult}
+          quiz={quizzes.find((q) => q.id === reviewResult.quizId)}
+          onClose={() => setReviewResult(null)}
         />
       )}
 
@@ -1065,25 +1500,29 @@ export default function App() {
               </div>
             </div>
 
-            {/* ── TOP NAVIGATION BAR (only when logged in) ── */}
+            {/* ── TOP NAV — disabled during quiz ── */}
             {user && (
               <div
                 style={{
                   display: "flex",
                   borderTop: "1px solid var(--border)",
-                  paddingBottom: 0,
                 }}
               >
                 {NAV_ITEMS.map((n) => (
                   <button
                     key={n.key}
                     className={`top-nav-btn${view === n.key ? " active" : ""}`}
+                    disabled={navLocked}
+                    title={navLocked ? "Finish your quiz first" : n.label}
                     onClick={() => {
-                      setActiveQuiz(null);
+                      if (navLocked) return;
                       setArchiveQuiz(null);
                       setView(n.key);
                     }}
-                    style={{ opacity: view === n.key ? 1 : 0.45 }}
+                    style={{
+                      opacity: navLocked ? 0.25 : view === n.key ? 1 : 0.45,
+                      position: "relative",
+                    }}
                   >
                     <span style={{ fontSize: 18 }}>{n.icon}</span>
                     <span
@@ -1099,8 +1538,13 @@ export default function App() {
                     >
                       {n.label}
                     </span>
-                    {/* Hover tooltip */}
-                    <span className="nav-tooltip">{n.label}</span>
+                    {/* Pending badge on Attend Quiz */}
+                    {n.badge > 0 && !navLocked && (
+                      <span className="nav-badge">{n.badge}</span>
+                    )}
+                    {!navLocked && (
+                      <span className="nav-tooltip">{n.label}</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -1111,7 +1555,7 @@ export default function App() {
         <div
           style={{ maxWidth: 800, margin: "auto", padding: "24px 20px 60px" }}
         >
-          {/* ── LOGIN ── */}
+          {/* ══ LOGIN ══ */}
           {!user && (
             <div
               className="fadeIn"
@@ -1122,6 +1566,7 @@ export default function App() {
                 flexWrap: "wrap",
               }}
             >
+              {/* Hero image */}
               <div
                 style={{
                   flex: "1 1 360px",
@@ -1185,6 +1630,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Auth panel */}
               <div style={{ flex: "1 1 220px" }}>
                 <div
                   style={{
@@ -1195,6 +1641,7 @@ export default function App() {
                     marginBottom: 16,
                   }}
                 >
+                  {/* Step: ID */}
                   {loginStep === "id" && (
                     <div className="slideIn">
                       <div
@@ -1258,6 +1705,8 @@ export default function App() {
                       </button>
                     </div>
                   )}
+
+                  {/* Step: Password */}
                   {loginStep === "password" && (
                     <div className="slideIn">
                       <button
@@ -1298,21 +1747,20 @@ export default function App() {
                         style={{
                           fontSize: 12,
                           color: "var(--text-dim)",
-                          marginBottom: 14,
+                          marginBottom: 10,
                         }}
                       >
                         Enter your password
                       </div>
-                      <input
-                        className={`field${authError ? " error" : ""}`}
-                        type="password"
-                        placeholder="Password"
+                      <PwField
                         value={password}
                         onChange={(e) => {
                           setPassword(e.target.value);
                           setAuthError("");
                         }}
+                        placeholder="Password"
                         onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                        hasError={!!authError}
                       />
                       {authError && (
                         <div
@@ -1320,7 +1768,7 @@ export default function App() {
                             fontSize: 11,
                             color: "var(--red)",
                             marginBottom: 10,
-                            marginTop: -8,
+                            marginTop: -4,
                           }}
                         >
                           {authError}
@@ -1335,6 +1783,8 @@ export default function App() {
                       </button>
                     </div>
                   )}
+
+                  {/* Step: Create */}
                   {loginStep === "create" && (
                     <div className="slideIn">
                       <button
@@ -1377,21 +1827,19 @@ export default function App() {
                         style={{
                           fontSize: 12,
                           color: "var(--text-dim)",
-                          marginBottom: 14,
+                          marginBottom: 10,
                         }}
                       >
                         Create your account password
                       </div>
-                      <input
-                        className="field"
-                        type="password"
-                        placeholder="Create password"
+                      <PwField
                         value={password}
                         onChange={(e) => {
                           setPassword(e.target.value);
                           setPwErrors([]);
                           setAuthError("");
                         }}
+                        placeholder="Create password"
                       />
                       {password && (
                         <div
@@ -1400,7 +1848,7 @@ export default function App() {
                             borderRadius: 10,
                             padding: "10px 14px",
                             marginBottom: 12,
-                            marginTop: -8,
+                            marginTop: -4,
                           }}
                         >
                           {[
@@ -1426,15 +1874,14 @@ export default function App() {
                           ))}
                         </div>
                       )}
-                      <input
-                        className={`field${authError ? " error" : ""}`}
-                        type="password"
-                        placeholder="Confirm password"
+                      <PwField
                         value={confirmPassword}
                         onChange={(e) => {
                           setConfirmPassword(e.target.value);
                           setAuthError("");
                         }}
+                        placeholder="Confirm password"
+                        hasError={!!authError}
                       />
                       {authError && (
                         <div
@@ -1442,7 +1889,7 @@ export default function App() {
                             fontSize: 11,
                             color: "var(--red)",
                             marginBottom: 10,
-                            marginTop: -8,
+                            marginTop: -4,
                           }}
                         >
                           {authError}
@@ -1462,7 +1909,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ── LOGGED IN ── */}
+          {/* ══ LOGGED IN ══ */}
           {user && (
             <div className="fadeIn">
               {/* User strip */}
@@ -1551,6 +1998,7 @@ export default function App() {
                         borderRadius: 18,
                         padding: "22px 20px",
                         cursor: "pointer",
+                        position: "relative",
                       }}
                     >
                       <div style={{ fontSize: 28, marginBottom: 10 }}>
@@ -1577,6 +2025,12 @@ export default function App() {
                           borderRadius: 2,
                         }}
                       />
+                      {/* Pending badge on Attend Quiz card */}
+                      {c.target === "attend" && pendingCount > 0 && (
+                        <span className="home-badge">
+                          {pendingCount} pending
+                        </span>
+                      )}
                     </div>
                   ))}
                   {ADMIN_IDS.includes(user.id) && (
@@ -1634,7 +2088,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── ATTEND ── */}
+              {/* ── ATTEND LIST ── */}
               {view === "attend" && !activeQuiz && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 18 }}>
@@ -1655,7 +2109,59 @@ export default function App() {
                       Available Quizzes
                     </div>
                   </div>
-                  {quizzes.map((q) => {
+
+                  {/* Scheduled (not yet live) */}
+                  {quizzes
+                    .filter(
+                      (q) =>
+                        q.scheduledAt && new Date(q.scheduledAt) > new Date()
+                    )
+                    .map((q) => (
+                      <div
+                        key={q.id}
+                        style={{
+                          background: "var(--panel)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 16,
+                          padding: "18px 20px",
+                          marginBottom: 12,
+                          opacity: 0.5,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <span className="sched-badge">🕐 Scheduled</span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: "var(--amber)",
+                              fontFamily: "'DM Mono',monospace",
+                            }}
+                          >
+                            {new Date(q.scheduledAt).toLocaleString("en-IN", {
+                              timeZone: "Asia/Kolkata",
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}{" "}
+                            IST
+                          </span>
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>
+                          {q.title}
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Live quizzes */}
+                  {liveQuizzes.map((q) => {
                     const done = results.some(
                       (r) => r.userId === user.id && r.quizId === q.id
                     );
@@ -1734,13 +2240,24 @@ export default function App() {
                       </div>
                     );
                   })}
+                  {liveQuizzes.length === 0 && (
+                    <div
+                      style={{
+                        color: "var(--text-faint)",
+                        fontSize: 13,
+                        marginTop: 8,
+                      }}
+                    >
+                      No active quizzes right now.
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* ── ACTIVE QUIZ ── */}
+              {/* ── ACTIVE QUIZ — one question per page ── */}
               {activeQuiz && (
                 <div
-                  className="fadeIn"
+                  className="fadeIn no-select"
                   onContextMenu={(e) => e.preventDefault()}
                 >
                   <div className="watermark" aria-hidden="true">
@@ -1753,6 +2270,7 @@ export default function App() {
                     {user.id}
                   </div>
 
+                  {/* Strike warning */}
                   {showWarning && (
                     <div className="strike-overlay">
                       <div className="strike-box">
@@ -1836,12 +2354,14 @@ export default function App() {
                     </div>
                   )}
 
-                  <div style={{ marginBottom: 20 }}>
+                  {/* Quiz header */}
+                  <div style={{ marginBottom: 18 }}>
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        marginBottom: 6,
                       }}
                     >
                       <div
@@ -1853,8 +2373,7 @@ export default function App() {
                           fontFamily: "'DM Mono',monospace",
                         }}
                       >
-                        {Object.keys(userAnswers).length}/
-                        {activeQuiz.questions.length} answered
+                        Q {currentQIdx + 1} / {activeQuiz.questions.length}
                       </div>
                       {strikes > 0 && (
                         <div
@@ -1892,11 +2411,11 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                    <div
-                      style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}
-                    >
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>
                       {activeQuiz.title}
                     </div>
+
+                    {/* Progress bar */}
                     <div
                       style={{
                         height: 3,
@@ -1912,102 +2431,173 @@ export default function App() {
                           background: "var(--teal)",
                           borderRadius: 4,
                           width: `${
-                            (Object.keys(userAnswers).length /
-                              activeQuiz.questions.length) *
+                            ((currentQIdx + 1) / activeQuiz.questions.length) *
                             100
                           }%`,
                           transition: "width 0.3s ease",
                         }}
                       />
                     </div>
-                  </div>
 
-                  {activeQuiz.questions.map((q, i) => (
+                    {/* Question dot navigator */}
                     <div
-                      key={i}
-                      className="no-select"
                       style={{
-                        background: "var(--panel)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 18,
-                        padding: 20,
-                        marginBottom: 14,
+                        display: "flex",
+                        gap: 5,
+                        flexWrap: "wrap",
+                        marginTop: 12,
                       }}
                     >
+                      {activeQuiz.questions.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`q-dot ${
+                            idx === currentQIdx
+                              ? "current"
+                              : userAnswers[idx] !== undefined
+                              ? "answered"
+                              : "unanswered"
+                          }`}
+                          onClick={() => setCurrentQIdx(idx)}
+                          title={`Q${idx + 1}`}
+                        >
+                          {idx + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Single question card */}
+                  {(() => {
+                    const q = activeQuiz.questions[currentQIdx];
+                    return (
                       <div
                         style={{
-                          fontSize: 10,
-                          color: "var(--text-faint)",
-                          fontFamily: "'DM Mono',monospace",
-                          marginBottom: 10,
+                          background: "var(--panel)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 18,
+                          padding: 24,
+                          marginBottom: 16,
                         }}
                       >
-                        Q{String(i + 1).padStart(2, "0")}
-                      </div>
-                      {q.image && (
-                        <img
-                          src={q.image}
+                        <div
                           style={{
-                            width: "100%",
-                            borderRadius: 10,
-                            marginBottom: 14,
+                            fontSize: 10,
+                            color: "var(--text-faint)",
+                            fontFamily: "'DM Mono',monospace",
+                            marginBottom: 12,
                           }}
-                          alt="Visual"
-                          onContextMenu={(e) => e.preventDefault()}
-                        />
-                      )}
-                      <p
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 14,
-                          marginBottom: 14,
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {q.text}
-                      </p>
-                      {q.options ? (
-                        q.options.map((opt, idx) => (
-                          <button
-                            key={idx}
-                            className={`option-btn${
-                              userAnswers[i] === opt ? " selected" : ""
-                            }`}
-                            onClick={() =>
-                              setUserAnswers({ ...userAnswers, [i]: opt })
-                            }
-                          >
-                            <span
-                              style={{
-                                fontFamily: "'DM Mono',monospace",
-                                fontSize: 11,
-                                marginRight: 10,
-                                opacity: 0.5,
-                              }}
+                        >
+                          Q{String(currentQIdx + 1).padStart(2, "0")} · {q.type}
+                        </div>
+                        {q.image && (
+                          <img
+                            src={q.image}
+                            style={{
+                              width: "100%",
+                              borderRadius: 10,
+                              marginBottom: 14,
+                            }}
+                            alt="Visual"
+                            onContextMenu={(e) => e.preventDefault()}
+                          />
+                        )}
+                        <p
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 15,
+                            marginBottom: 18,
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {q.text}
+                        </p>
+                        {q.options ? (
+                          q.options.map((opt, idx) => (
+                            <button
+                              key={idx}
+                              className={`option-btn${
+                                userAnswers[currentQIdx] === opt
+                                  ? " selected"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                setUserAnswers({
+                                  ...userAnswers,
+                                  [currentQIdx]: opt,
+                                })
+                              }
                             >
-                              {String.fromCharCode(65 + idx)}
-                            </span>
-                            {opt}
-                          </button>
-                        ))
-                      ) : (
-                        <input
-                          className="field"
-                          style={{ marginBottom: 0 }}
-                          placeholder="Type your answer..."
-                          onChange={(e) =>
-                            setUserAnswers({
-                              ...userAnswers,
-                              [i]: e.target.value,
-                            })
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
-                  <button className="btn-primary" onClick={submitTest}>
-                    Submit Final Answers
-                  </button>
+                              <span
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 11,
+                                  marginRight: 10,
+                                  opacity: 0.5,
+                                }}
+                              >
+                                {String.fromCharCode(65 + idx)}
+                              </span>
+                              {opt}
+                            </button>
+                          ))
+                        ) : (
+                          <input
+                            className="field"
+                            style={{ marginBottom: 0 }}
+                            placeholder="Type your answer..."
+                            value={userAnswers[currentQIdx] || ""}
+                            onChange={(e) =>
+                              setUserAnswers({
+                                ...userAnswers,
+                                [currentQIdx]: e.target.value,
+                              })
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Prev / Next / Submit */}
+                  <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                    <button
+                      className="q-nav-btn"
+                      disabled={currentQIdx === 0}
+                      onClick={() => setCurrentQIdx((i) => i - 1)}
+                    >
+                      ← Previous
+                    </button>
+                    {currentQIdx < activeQuiz.questions.length - 1 ? (
+                      <button
+                        className="q-nav-btn"
+                        onClick={() => setCurrentQIdx((i) => i + 1)}
+                      >
+                        Save &amp; Next →
+                      </button>
+                    ) : (
+                      <button
+                        className={`q-nav-btn submit-btn`}
+                        disabled={isSubmitting}
+                        onClick={submitTest}
+                      >
+                        {isSubmitting
+                          ? "Submitting…"
+                          : "Submit Final Answers ✓"}
+                      </button>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--text-faint)",
+                      textAlign: "center",
+                    }}
+                  >
+                    {Object.keys(userAnswers).length} /{" "}
+                    {activeQuiz.questions.length} answered — click any number to
+                    jump
+                  </div>
                 </div>
               )}
 
@@ -2086,7 +2676,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── ARCHIVE DETAIL ── */}
+              {/* ── ARCHIVE DETAIL — all options shown, correct highlighted ── */}
               {archiveQuiz && (
                 <div className="fadeIn">
                   <button
@@ -2108,7 +2698,7 @@ export default function App() {
                         border: "1px solid var(--border)",
                         borderRadius: 16,
                         padding: "18px 20px",
-                        marginBottom: 12,
+                        marginBottom: 14,
                       }}
                     >
                       <div
@@ -2119,31 +2709,99 @@ export default function App() {
                           marginBottom: 8,
                         }}
                       >
-                        Q{String(i + 1).padStart(2, "0")}
+                        Q{String(i + 1).padStart(2, "0")} · {q.type}
                       </div>
+                      {q.image && (
+                        <img
+                          src={q.image}
+                          style={{
+                            width: "100%",
+                            borderRadius: 10,
+                            marginBottom: 12,
+                          }}
+                          alt="Visual"
+                        />
+                      )}
                       <p
                         style={{
                           fontWeight: 600,
                           fontSize: 14,
-                          marginBottom: 12,
+                          marginBottom: 14,
                           lineHeight: 1.5,
                         }}
                       >
                         {q.text}
                       </p>
-                      <div
-                        style={{
-                          background: "rgba(34,197,94,0.1)",
-                          border: "1px solid rgba(34,197,94,0.3)",
-                          borderRadius: 10,
-                          padding: "10px 14px",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: "var(--green)",
-                        }}
-                      >
-                        ✓ {q.correct}
-                      </div>
+
+                      {/* MCQ — all options, correct marked green */}
+                      {q.options ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                          }}
+                        >
+                          {q.options.map((opt, oi) => {
+                            const isCorrect = opt === q.correct;
+                            return (
+                              <div
+                                key={oi}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                  padding: "11px 14px",
+                                  borderRadius: 10,
+                                  fontSize: 14,
+                                  background: isCorrect
+                                    ? "rgba(34,197,94,0.1)"
+                                    : "var(--navy3)",
+                                  border: `1px solid ${
+                                    isCorrect
+                                      ? "rgba(34,197,94,0.4)"
+                                      : "var(--border)"
+                                  }`,
+                                  color: isCorrect
+                                    ? "var(--green)"
+                                    : "var(--text-dim)",
+                                  fontWeight: isCorrect ? 700 : 400,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontFamily: "'DM Mono',monospace",
+                                    fontSize: 11,
+                                    opacity: 0.6,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {String.fromCharCode(65 + oi)}
+                                </span>
+                                <span style={{ flex: 1 }}>{opt}</span>
+                                {isCorrect && (
+                                  <span style={{ fontSize: 16 }}>✓</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        /* Fill-blank: just show correct answer */
+                        <div
+                          style={{
+                            background: "rgba(34,197,94,0.1)",
+                            border: "1px solid rgba(34,197,94,0.3)",
+                            borderRadius: 10,
+                            padding: "10px 14px",
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: "var(--green)",
+                          }}
+                        >
+                          ✓ {q.correct}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2171,7 +2829,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Quiz meta */}
+                  {/* Meta */}
                   <div
                     style={{
                       background: "var(--panel)",
@@ -2187,6 +2845,7 @@ export default function App() {
                       value={newQuizTitle}
                       onChange={(e) => setNewQuizTitle(e.target.value)}
                     />
+
                     <label
                       style={{
                         fontSize: 11,
@@ -2200,7 +2859,7 @@ export default function App() {
                     >
                       Deadline (optional)
                     </label>
-                    <div style={{ position: "relative", marginBottom: 0 }}>
+                    <div style={{ position: "relative", marginBottom: 16 }}>
                       <input
                         type="date"
                         className="field"
@@ -2227,6 +2886,106 @@ export default function App() {
                         📅
                       </span>
                     </div>
+
+                    {/* Publish timing */}
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text-faint)",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        fontFamily: "'DM Mono',monospace",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Publish Timing
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                      {[
+                        { val: "now", label: "🚀 Post Now" },
+                        { val: "later", label: "🕐 Schedule for Later" },
+                      ].map((o) => (
+                        <button
+                          key={o.val}
+                          onClick={() => setPostType(o.val)}
+                          style={{
+                            flex: 1,
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: "1px solid",
+                            borderColor:
+                              postType === o.val
+                                ? "var(--teal)"
+                                : "var(--border)",
+                            background:
+                              postType === o.val
+                                ? "var(--teal-dim)"
+                                : "transparent",
+                            color:
+                              postType === o.val
+                                ? "var(--teal)"
+                                : "var(--text-dim)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {postType === "later" && (
+                      <div className="slideIn">
+                        <label
+                          style={{
+                            fontSize: 11,
+                            color: "var(--amber)",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            fontFamily: "'DM Mono',monospace",
+                            display: "block",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Go-Live Date &amp; Time (IST)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          className="field"
+                          value={scheduledAt}
+                          onChange={(e) => setScheduledAt(e.target.value)}
+                          style={{
+                            colorScheme: "dark",
+                            color: scheduledAt ? "#fff" : "var(--text-faint)",
+                            marginBottom: scheduledAt ? 4 : 0,
+                          }}
+                        />
+                        {scheduledAt && (
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--amber)",
+                              fontFamily: "'DM Mono',monospace",
+                              marginBottom: 4,
+                            }}
+                          >
+                            Goes live:{" "}
+                            {new Date(scheduledAt).toLocaleString("en-IN", {
+                              timeZone: "Asia/Kolkata",
+                              weekday: "short",
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}{" "}
+                            IST
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Question builder */}
@@ -2251,8 +3010,6 @@ export default function App() {
                     >
                       Question Type
                     </div>
-
-                    {/* Type selector — only MCQ and Fill-Blank */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                       {["MCQ", "Fill-Blank"].map((t) => (
                         <button
@@ -2282,7 +3039,6 @@ export default function App() {
                       ))}
                     </div>
 
-                    {/* Question text */}
                     <textarea
                       className="field"
                       placeholder="Question text..."
@@ -2292,7 +3048,6 @@ export default function App() {
                       style={{ resize: "vertical" }}
                     />
 
-                    {/* Image upload — available for both types */}
                     <div style={{ marginBottom: 4 }}>
                       <div
                         style={{
@@ -2309,7 +3064,6 @@ export default function App() {
                       <ImageUploader value={qImage} onChange={setQImage} />
                     </div>
 
-                    {/* MCQ Options */}
                     {qType === "MCQ" && (
                       <div>
                         <div
@@ -2375,7 +3129,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Fill-Blank answer */}
                     {qType === "Fill-Blank" && (
                       <input
                         className="field"
@@ -2405,7 +3158,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Draft preview button */}
                   {addedQuestions.length > 0 && (
                     <button
                       onClick={() => setShowDraftModal(true)}
@@ -2445,10 +3197,17 @@ export default function App() {
 
                   <button
                     className="btn-primary"
-                    style={{ background: "var(--green)" }}
+                    style={{
+                      background: isPublishing ? "#2a3a4a" : "var(--green)",
+                    }}
                     onClick={publishQuiz}
+                    disabled={isPublishing}
                   >
-                    Publish Quiz
+                    {isPublishing
+                      ? "Publishing…"
+                      : postType === "later"
+                      ? "Schedule Quiz 🕐"
+                      : "Publish Quiz 🚀"}
                   </button>
                 </div>
               )}
@@ -2474,6 +3233,8 @@ export default function App() {
                       Leaderboard
                     </div>
                   </div>
+
+                  {/* Leaderboard table */}
                   <div
                     style={{
                       background: "var(--panel)",
@@ -2563,6 +3324,8 @@ export default function App() {
                         );
                       })}
                   </div>
+
+                  {/* My history with "View Answers" button */}
                   <div
                     style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}
                   >
@@ -2582,69 +3345,94 @@ export default function App() {
                         borderRadius: 14,
                         padding: "14px 18px",
                         marginBottom: 10,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
                       }}
                     >
-                      <div>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            fontSize: 13,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          {res.quizTitle}
-                          {res.flagged && (
-                            <span
-                              style={{
-                                fontSize: 9,
-                                background: "rgba(239,68,68,0.15)",
-                                color: "var(--red)",
-                                border: "1px solid rgba(239,68,68,0.3)",
-                                padding: "1px 6px",
-                                borderRadius: 10,
-                                fontFamily: "'DM Mono',monospace",
-                                fontWeight: 700,
-                              }}
-                            >
-                              🚩
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--text-faint)",
-                            fontFamily: "'DM Mono',monospace",
-                            marginTop: 3,
-                          }}
-                        >
-                          {new Date(
-                            res.submittedAt.seconds * 1000
-                          ).toLocaleDateString()}
-                        </div>
-                      </div>
                       <div
                         style={{
-                          fontFamily: "'DM Mono',monospace",
-                          fontSize: 18,
-                          fontWeight: 700,
-                          color:
-                            res.score / res.total >= 0.7
-                              ? "var(--green)"
-                              : "var(--amber)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
                         }}
                       >
-                        {res.score}
-                        <span
-                          style={{ fontSize: 12, color: "var(--text-faint)" }}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {res.quizTitle}
+                            {res.flagged && (
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  background: "rgba(239,68,68,0.15)",
+                                  color: "var(--red)",
+                                  border: "1px solid rgba(239,68,68,0.3)",
+                                  padding: "1px 6px",
+                                  borderRadius: 10,
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                🚩 FLAGGED
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-faint)",
+                              fontFamily: "'DM Mono',monospace",
+                              marginTop: 3,
+                            }}
+                          >
+                            {new Date(
+                              res.submittedAt.seconds * 1000
+                            ).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            flexShrink: 0,
+                          }}
                         >
-                          /{res.total}
-                        </span>
+                          <div
+                            style={{
+                              fontFamily: "'DM Mono',monospace",
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color:
+                                res.score / res.total >= 0.7
+                                  ? "var(--green)"
+                                  : "var(--amber)",
+                            }}
+                          >
+                            {res.score}
+                            <span
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-faint)",
+                              }}
+                            >
+                              /{res.total}
+                            </span>
+                          </div>
+                          <button
+                            className="btn-ghost"
+                            style={{ fontSize: 11, padding: "6px 12px" }}
+                            onClick={() => setReviewResult(res)}
+                          >
+                            Review
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
