@@ -864,8 +864,11 @@ function ResultReviewModal({ result, quiz, onClose }) {
                   style={{ display: "flex", flexDirection: "column", gap: 6 }}
                 >
                   {q.options.map((opt, oi) => {
-                    const isCorrectOpt = opt === q.correct;
-                    const isUserChoice = userAns === opt;
+                    const isCorrectOpt =
+                      opt.trim().toLowerCase() ===
+                      (q.correct || "").trim().toLowerCase();
+                    const isUserChoice =
+                      userAns.trim().toLowerCase() === opt.trim().toLowerCase();
                     let bg = "var(--navy3)",
                       border = "1px solid var(--border)",
                       color = "var(--text-dim)";
@@ -1011,6 +1014,7 @@ export default function App() {
   const [ansKey, setAnsKey] = useState("");
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [exemptUsers, setExemptUsers] = useState([]); // users exempt from quiz
 
   // ── Scheduled publish ──
   const [postType, setPostType] = useState("now"); // "now" | "later"
@@ -1275,6 +1279,7 @@ export default function App() {
         deadline,
         createdAt: new Date(),
         scheduledAt: postType === "later" ? scheduledAt : null,
+        exemptUsers: exemptUsers,
       });
       const msg =
         postType === "later"
@@ -1289,6 +1294,7 @@ export default function App() {
       setDeadline("");
       setScheduledAt("");
       setPostType("now");
+      setExemptUsers([]);
       setTimeout(() => alert(msg), 150);
     } catch {
       alert("Failed to publish. Try again.");
@@ -1315,7 +1321,8 @@ export default function App() {
     setCorrectIdx(0);
   };
 
-  const logout = () => {
+  const doLogout = () => {
+    exitFullscreen();
     localStorage.removeItem("npd_portal_id");
     setUser(null);
     setLoginStep("id");
@@ -1324,7 +1331,55 @@ export default function App() {
     setConfirmPassword("");
     setFoundMember(null);
     setAuthError("");
+    setActiveQuiz(null);
+    setUserAnswers({});
+    setStrikes(0);
+    setCurrentQIdx(0);
+    submittingRef.current = false;
+    setIsSubmitting(false);
     setView("home");
+  };
+
+  const logout = () => {
+    if (activeQuiz) {
+      if (
+        !window.confirm(
+          "You are in the middle of a quiz!\n\nLogging out will auto-submit your current answers. Are you sure?"
+        )
+      )
+        return;
+      (async () => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
+        let score = 0;
+        activeQuiz.questions.forEach((q, i) => {
+          if (
+            (userAnswers[i] || "").trim().toLowerCase() ===
+            (q.correct || "").trim().toLowerCase()
+          )
+            score++;
+        });
+        try {
+          await addDoc(collection(db, "results"), {
+            userId: user.id,
+            userName: user.name,
+            quizId: activeQuiz.id,
+            quizTitle: activeQuiz.title,
+            score,
+            total: activeQuiz.questions.length,
+            responses: userAnswers,
+            submittedAt: new Date(),
+            flagged: false,
+            note: "Auto-submitted on logout",
+          });
+        } catch (e) {
+          console.error(e);
+        }
+        doLogout();
+      })();
+      return;
+    }
+    doLogout();
   };
 
   // ── Loading screen ──
@@ -1946,7 +2001,6 @@ export default function App() {
                   accent="var(--amber)"
                 />
               </div>
-
               {/* ── HOME ── */}
               {view === "home" && (
                 <div
@@ -2085,7 +2139,6 @@ export default function App() {
                   )}
                 </div>
               )}
-
               {/* ── ATTEND LIST ── */}
               {view === "attend" && !activeQuiz && (
                 <div className="fadeIn">
@@ -2160,19 +2213,24 @@ export default function App() {
 
                   {/* Live quizzes */}
                   {liveQuizzes.map((q) => {
-                    const done = results.some(
-                      (r) => r.userId === user.id && r.quizId === q.id
-                    );
+                    const isExempt =
+                      q.exemptUsers && q.exemptUsers.includes(user.id);
+                    const done =
+                      results.some(
+                        (r) => r.userId === user.id && r.quizId === q.id
+                      ) || isExempt;
                     return (
                       <div
                         key={q.id}
                         style={{
                           background: "var(--panel)",
-                          border: "1px solid var(--border)",
+                          border: `1px solid ${
+                            isExempt ? "rgba(167,139,250,0.3)" : "var(--border)"
+                          }`,
                           borderRadius: 16,
                           padding: "18px 20px",
                           marginBottom: 12,
-                          opacity: done ? 0.55 : 1,
+                          opacity: done ? 0.6 : 1,
                         }}
                       >
                         <div
@@ -2216,7 +2274,18 @@ export default function App() {
                             justifyContent: "flex-end",
                           }}
                         >
-                          {!done ? (
+                          {isExempt ? (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: "#a78bfa",
+                                fontWeight: 700,
+                                fontFamily: "'DM Mono',monospace",
+                              }}
+                            >
+                              EXEMPT ✦
+                            </span>
+                          ) : !done ? (
                             <button
                               className="btn-ghost"
                               onClick={() => startQuiz(q)}
@@ -2251,7 +2320,6 @@ export default function App() {
                   )}
                 </div>
               )}
-
               {/* ── ACTIVE QUIZ — one question per page ── */}
               {activeQuiz && (
                 <div
@@ -2364,50 +2432,76 @@ export default function App() {
                     >
                       <div
                         style={{
-                          fontSize: 11,
-                          color: "var(--teal)",
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          fontFamily: "'DM Mono',monospace",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
                         }}
                       >
-                        Q {currentQIdx + 1} / {activeQuiz.questions.length}
-                      </div>
-                      {strikes > 0 && (
                         <div
                           style={{
-                            display: "flex",
-                            gap: 5,
-                            alignItems: "center",
+                            fontSize: 11,
+                            color: "var(--teal)",
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            fontFamily: "'DM Mono',monospace",
                           }}
                         >
-                          {[1, 2, 3].map((n) => (
-                            <div
-                              key={n}
-                              style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: "50%",
-                                background:
-                                  strikes >= n ? "var(--red)" : "var(--navy3)",
-                                border: `1px solid ${
-                                  strikes >= n ? "var(--red)" : "var(--border)"
-                                }`,
-                              }}
-                            />
-                          ))}
-                          <span
+                          Q {currentQIdx + 1} / {activeQuiz.questions.length}
+                        </div>
+                        {strikes > 0 && (
+                          <div
                             style={{
-                              fontSize: 10,
-                              color: "var(--red)",
-                              fontFamily: "'DM Mono',monospace",
-                              marginLeft: 4,
+                              display: "flex",
+                              gap: 5,
+                              alignItems: "center",
                             }}
                           >
-                            STRIKES
-                          </span>
-                        </div>
-                      )}
+                            {[1, 2, 3].map((n) => (
+                              <div
+                                key={n}
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background:
+                                    strikes >= n
+                                      ? "var(--red)"
+                                      : "var(--navy3)",
+                                  border: `1px solid ${
+                                    strikes >= n
+                                      ? "var(--red)"
+                                      : "var(--border)"
+                                  }`,
+                                }}
+                              />
+                            ))}
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: "var(--red)",
+                                fontFamily: "'DM Mono',monospace",
+                                marginLeft: 4,
+                              }}
+                            >
+                              STRIKES
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Submit button — top right, always visible */}
+                      <button
+                        className="q-nav-btn submit-btn"
+                        disabled={isSubmitting}
+                        onClick={submitTest}
+                        style={{
+                          width: "auto",
+                          padding: "8px 18px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {isSubmitting ? "Saving…" : "Save & Submit ✓"}
+                      </button>
                     </div>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>
                       {activeQuiz.title}
@@ -2557,7 +2651,7 @@ export default function App() {
                     );
                   })()}
 
-                  {/* Prev / Next / Submit */}
+                  {/* Prev / Next */}
                   <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
                     <button
                       className="q-nav-btn"
@@ -2566,24 +2660,13 @@ export default function App() {
                     >
                       ← Previous
                     </button>
-                    {currentQIdx < activeQuiz.questions.length - 1 ? (
-                      <button
-                        className="q-nav-btn"
-                        onClick={() => setCurrentQIdx((i) => i + 1)}
-                      >
-                        Save &amp; Next →
-                      </button>
-                    ) : (
-                      <button
-                        className={`q-nav-btn submit-btn`}
-                        disabled={isSubmitting}
-                        onClick={submitTest}
-                      >
-                        {isSubmitting
-                          ? "Submitting…"
-                          : "Submit Final Answers ✓"}
-                      </button>
-                    )}
+                    <button
+                      className="q-nav-btn"
+                      disabled={currentQIdx >= activeQuiz.questions.length - 1}
+                      onClick={() => setCurrentQIdx((i) => i + 1)}
+                    >
+                      Save &amp; Next →
+                    </button>
                   </div>
                   <div
                     style={{
@@ -2598,7 +2681,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-
               {/* ── ARCHIVE LIST ── */}
               {view === "archive" && !archiveQuiz && (
                 <div className="fadeIn">
@@ -2621,9 +2703,12 @@ export default function App() {
                     </div>
                   </div>
                   {quizzes.map((q) => {
-                    const hasTaken = results.some(
-                      (r) => r.userId === user.id && r.quizId === q.id
-                    );
+                    const isExempt =
+                      q.exemptUsers && q.exemptUsers.includes(user.id);
+                    const hasTaken =
+                      results.some(
+                        (r) => r.userId === user.id && r.quizId === q.id
+                      ) || isExempt;
                     return (
                       <div
                         key={q.id}
@@ -2673,7 +2758,133 @@ export default function App() {
                   })}
                 </div>
               )}
-
+              {/* ── MY SUBMISSIONS — shown in archive tab ── */}
+              {view === "archive" && !archiveQuiz && (
+                <div style={{ marginTop: 28 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--teal)",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      fontFamily: "'DM Mono',monospace",
+                      marginBottom: 4,
+                    }}
+                  >
+                    My Results
+                  </div>
+                  <div
+                    style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}
+                  >
+                    My Submissions
+                  </div>
+                  {myResults.length === 0 && (
+                    <div style={{ color: "var(--text-faint)", fontSize: 13 }}>
+                      No tests taken yet.
+                    </div>
+                  )}
+                  {myResults.map((res, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        background: "var(--panel)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 14,
+                        padding: "14px 18px",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {res.quizTitle}
+                            {res.flagged && (
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  background: "rgba(239,68,68,0.15)",
+                                  color: "var(--red)",
+                                  border: "1px solid rgba(239,68,68,0.3)",
+                                  padding: "1px 6px",
+                                  borderRadius: 10,
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                🚩 FLAGGED
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-faint)",
+                              fontFamily: "'DM Mono',monospace",
+                              marginTop: 3,
+                            }}
+                          >
+                            {new Date(
+                              res.submittedAt.seconds * 1000
+                            ).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: "'DM Mono',monospace",
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color:
+                                res.score / res.total >= 0.7
+                                  ? "var(--green)"
+                                  : "var(--amber)",
+                            }}
+                          >
+                            {res.score}
+                            <span
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-faint)",
+                              }}
+                            >
+                              /{res.total}
+                            </span>
+                          </div>
+                          <button
+                            className="btn-ghost"
+                            style={{ fontSize: 11, padding: "6px 12px" }}
+                            onClick={() => setReviewResult(res)}
+                          >
+                            Review
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {/* ── ARCHIVE DETAIL — all options shown, correct highlighted ── */}
               {archiveQuiz && (
                 <div className="fadeIn">
@@ -2804,7 +3015,6 @@ export default function App() {
                   ))}
                 </div>
               )}
-
               {/* ── POST QUIZ ── */}
               {view === "post" && (
                 <div className="fadeIn">
@@ -2984,6 +3194,96 @@ export default function App() {
                         )}
                       </div>
                     )}
+
+                    {/* Exempt Members */}
+                    <div style={{ marginTop: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#a78bfa",
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          fontFamily: "'DM Mono',monospace",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Exempt Members (optional)
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--text-faint)",
+                          marginBottom: 10,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        These members skip this quiz and can view solutions
+                        directly.
+                      </div>
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+                      >
+                        {TEAM_MEMBERS.map((m) => {
+                          const sel = exemptUsers.includes(m.id);
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() =>
+                                setExemptUsers(
+                                  sel
+                                    ? exemptUsers.filter((id) => id !== m.id)
+                                    : [...exemptUsers, m.id]
+                                )
+                              }
+                              style={{
+                                padding: "5px 12px",
+                                borderRadius: 20,
+                                border: `1px solid ${
+                                  sel ? "#a78bfa" : "var(--border)"
+                                }`,
+                                background: sel
+                                  ? "rgba(167,139,250,0.15)"
+                                  : "var(--navy3)",
+                                color: sel ? "#a78bfa" : "var(--text-faint)",
+                                fontSize: 12,
+                                fontWeight: sel ? 700 : 400,
+                                cursor: "pointer",
+                                transition: "all 0.15s",
+                              }}
+                            >
+                              {sel ? "✓ " : ""}
+                              {m.name.split(" ")[0]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {exemptUsers.length > 0 && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#a78bfa",
+                            marginTop: 8,
+                            fontFamily: "'DM Mono',monospace",
+                          }}
+                        >
+                          {exemptUsers.length} member
+                          {exemptUsers.length !== 1 ? "s" : ""} exempt
+                          <button
+                            onClick={() => setExemptUsers([])}
+                            style={{
+                              marginLeft: 10,
+                              background: "none",
+                              border: "none",
+                              color: "var(--text-faint)",
+                              fontSize: 11,
+                              cursor: "pointer",
+                            }}
+                          >
+                            clear
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Question builder */}
@@ -3209,7 +3509,6 @@ export default function App() {
                   </button>
                 </div>
               )}
-
               {/* ── RANKING ── */}
               {view === "ranking" && (
                 <div className="fadeIn">
@@ -3322,122 +3621,9 @@ export default function App() {
                         );
                       })}
                   </div>
-
-                  {/* My history with "View Answers" button */}
-                  <div
-                    style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}
-                  >
-                    My History
-                  </div>
-                  {myResults.length === 0 && (
-                    <div style={{ color: "var(--text-faint)", fontSize: 13 }}>
-                      No tests taken yet.
-                    </div>
-                  )}
-                  {myResults.map((res, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: "var(--panel)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 14,
-                        padding: "14px 18px",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              fontSize: 13,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            {res.quizTitle}
-                            {res.flagged && (
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  background: "rgba(239,68,68,0.15)",
-                                  color: "var(--red)",
-                                  border: "1px solid rgba(239,68,68,0.3)",
-                                  padding: "1px 6px",
-                                  borderRadius: 10,
-                                  fontFamily: "'DM Mono',monospace",
-                                  fontWeight: 700,
-                                }}
-                              >
-                                🚩 FLAGGED
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "var(--text-faint)",
-                              fontFamily: "'DM Mono',monospace",
-                              marginTop: 3,
-                            }}
-                          >
-                            {new Date(
-                              res.submittedAt.seconds * 1000
-                            ).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            flexShrink: 0,
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontFamily: "'DM Mono',monospace",
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color:
-                                res.score / res.total >= 0.7
-                                  ? "var(--green)"
-                                  : "var(--amber)",
-                            }}
-                          >
-                            {res.score}
-                            <span
-                              style={{
-                                fontSize: 12,
-                                color: "var(--text-faint)",
-                              }}
-                            >
-                              /{res.total}
-                            </span>
-                          </div>
-                          <button
-                            className="btn-ghost"
-                            style={{ fontSize: 11, padding: "6px 12px" }}
-                            onClick={() => setReviewResult(res)}
-                          >
-                            Review
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               )}
-
-              {/* ── ADMIN ── */}
+              {/* ── ADMIN ── */} {/* ── ADMIN ── */}
               {view === "admin" && ADMIN_IDS.includes(user.id) && (
                 <div className="fadeIn">
                   <div style={{ marginBottom: 20 }}>
