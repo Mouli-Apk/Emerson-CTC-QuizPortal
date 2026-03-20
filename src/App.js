@@ -1421,7 +1421,9 @@ export default function App() {
     (q) => !q.scheduledAt || new Date(q.scheduledAt) <= new Date()
   );
   const pendingCount = liveQuizzes.filter(
-    (q) => !results.some((r) => r.userId === user?.id && r.quizId === q.id)
+    (q) =>
+      !results.some((r) => r.userId === user?.id && r.quizId === q.id) &&
+      !(q.exemptUsers && q.exemptUsers.includes(user?.id))
   ).length;
 
   const NAV_ITEMS = [
@@ -2490,14 +2492,21 @@ export default function App() {
                       </div>
                       {/* Submit button — top right, always visible */}
                       <button
-                        className="q-nav-btn submit-btn"
                         disabled={isSubmitting}
                         onClick={submitTest}
                         style={{
-                          width: "auto",
-                          padding: "8px 18px",
+                          flexShrink: 0,
+                          background: isSubmitting ? "#2a3a4a" : "var(--teal)",
+                          color: isSubmitting ? "#5a6a7a" : "var(--navy)",
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "8px 16px",
                           fontSize: 12,
                           fontWeight: 700,
+                          letterSpacing: "0.04em",
+                          cursor: isSubmitting ? "not-allowed" : "pointer",
+                          whiteSpace: "nowrap",
+                          transition: "background 0.2s",
                         }}
                       >
                         {isSubmitting ? "Saving…" : "Save & Submit ✓"}
