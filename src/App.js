@@ -1013,6 +1013,7 @@ export default function App() {
   const [correctIdx, setCorrectIdx] = useState(0);
   const [ansKey, setAnsKey] = useState("");
   const [showDraftModal, setShowDraftModal] = useState(false);
+  const [showMetaPanel, setShowMetaPanel] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [exemptUsers, setExemptUsers] = useState([]); // users exempt from quiz
 
@@ -1295,6 +1296,7 @@ export default function App() {
       setScheduledAt("");
       setPostType("now");
       setExemptUsers([]);
+      setShowMetaPanel(true);
       setTimeout(() => alert(msg), 150);
     } catch {
       alert("Failed to publish. Try again.");
@@ -3041,119 +3043,149 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Meta */}
+                  {/* ── Quiz Details — collapsible ── */}
                   <div
                     style={{
                       background: "var(--panel)",
-                      border: "1px solid var(--border)",
+                      border: `1px solid ${
+                        showMetaPanel ? "var(--border-teal)" : "var(--border)"
+                      }`,
                       borderRadius: 18,
-                      padding: 24,
                       marginBottom: 16,
+                      overflow: "hidden",
+                      transition: "border-color 0.2s",
                     }}
                   >
-                    <input
-                      className="field"
-                      placeholder="Quiz Title"
-                      value={newQuizTitle}
-                      onChange={(e) => setNewQuizTitle(e.target.value)}
-                    />
-
-                    <label
+                    {/* Header bar — always visible, click to toggle */}
+                    <div
+                      onClick={() => setShowMetaPanel((v) => !v)}
                       style={{
-                        fontSize: 11,
-                        color: "var(--text-faint)",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                        fontFamily: "'DM Mono',monospace",
-                        display: "block",
-                        marginBottom: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "14px 20px",
+                        cursor: "pointer",
+                        userSelect: "none",
                       }}
                     >
-                      Deadline (optional)
-                    </label>
-                    <div style={{ position: "relative", marginBottom: 16 }}>
-                      <input
-                        type="date"
-                        className="field"
-                        value={deadline}
-                        onChange={(e) => setDeadline(e.target.value)}
+                      <div
                         style={{
-                          marginBottom: 0,
-                          paddingRight: 44,
-                          colorScheme: "dark",
-                          color: deadline ? "#fff" : "var(--text-faint)",
-                        }}
-                      />
-                      <span
-                        style={{
-                          position: "absolute",
-                          right: 14,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          fontSize: 18,
-                          pointerEvents: "none",
-                          userSelect: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          minWidth: 0,
                         }}
                       >
-                        📅
-                      </span>
-                    </div>
-
-                    {/* Publish timing */}
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "var(--text-faint)",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                        fontFamily: "'DM Mono',monospace",
-                        marginBottom: 10,
-                      }}
-                    >
-                      Publish Timing
-                    </div>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                      {[
-                        { val: "now", label: "🚀 Post Now" },
-                        { val: "later", label: "🕐 Schedule for Later" },
-                      ].map((o) => (
-                        <button
-                          key={o.val}
-                          onClick={() => setPostType(o.val)}
+                        <span style={{ fontSize: 16 }}>📋</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--green)",
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              fontFamily: "'DM Mono',monospace",
+                            }}
+                          >
+                            Quiz Details
+                          </div>
+                          {!showMetaPanel && (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: newQuizTitle
+                                  ? "var(--text)"
+                                  : "var(--text-faint)",
+                                marginTop: 2,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                maxWidth: "55vw",
+                              }}
+                            >
+                              {newQuizTitle || "Untitled quiz"}
+                              {deadline && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: "var(--text-faint)",
+                                    fontWeight: 400,
+                                    marginLeft: 8,
+                                  }}
+                                >
+                                  · {deadline}
+                                </span>
+                              )}
+                              {exemptUsers.length > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#a78bfa",
+                                    fontWeight: 400,
+                                    marginLeft: 8,
+                                  }}
+                                >
+                                  · {exemptUsers.length} exempt
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {!showMetaPanel && !newQuizTitle && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "var(--red)",
+                              fontFamily: "'DM Mono',monospace",
+                              fontWeight: 700,
+                            }}
+                          >
+                            TITLE REQUIRED
+                          </span>
+                        )}
+                        <span
                           style={{
-                            flex: 1,
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            border: "1px solid",
-                            borderColor:
-                              postType === o.val
-                                ? "var(--teal)"
-                                : "var(--border)",
-                            background:
-                              postType === o.val
-                                ? "var(--teal-dim)"
-                                : "transparent",
-                            color:
-                              postType === o.val
-                                ? "var(--teal)"
-                                : "var(--text-dim)",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            transition: "all 0.2s",
+                            fontSize: 18,
+                            color: "var(--text-faint)",
+                            transition: "transform 0.2s",
+                            display: "inline-block",
+                            transform: showMetaPanel
+                              ? "rotate(180deg)"
+                              : "rotate(0deg)",
                           }}
                         >
-                          {o.label}
-                        </button>
-                      ))}
+                          ⌄
+                        </span>
+                      </div>
                     </div>
 
-                    {postType === "later" && (
-                      <div className="slideIn">
+                    {/* Expandable content */}
+                    {showMetaPanel && (
+                      <div
+                        className="slideIn"
+                        style={{ padding: "0 20px 20px" }}
+                      >
+                        <input
+                          className="field"
+                          placeholder="Quiz Title"
+                          value={newQuizTitle}
+                          onChange={(e) => setNewQuizTitle(e.target.value)}
+                        />
+
                         <label
                           style={{
                             fontSize: 11,
-                            color: "var(--amber)",
+                            color: "var(--text-faint)",
                             letterSpacing: "0.08em",
                             textTransform: "uppercase",
                             fontFamily: "'DM Mono',monospace",
@@ -3161,133 +3193,265 @@ export default function App() {
                             marginBottom: 8,
                           }}
                         >
-                          Go-Live Date &amp; Time (IST)
+                          Deadline (optional)
                         </label>
-                        <input
-                          type="datetime-local"
-                          className="field"
-                          value={scheduledAt}
-                          onChange={(e) => setScheduledAt(e.target.value)}
-                          style={{
-                            colorScheme: "dark",
-                            color: scheduledAt ? "#fff" : "var(--text-faint)",
-                            marginBottom: scheduledAt ? 4 : 0,
-                          }}
-                        />
-                        {scheduledAt && (
-                          <div
+                        <div style={{ position: "relative", marginBottom: 16 }}>
+                          <input
+                            type="date"
+                            className="field"
+                            value={deadline}
+                            onChange={(e) => setDeadline(e.target.value)}
                             style={{
-                              fontSize: 11,
-                              color: "var(--amber)",
-                              fontFamily: "'DM Mono',monospace",
-                              marginBottom: 4,
+                              marginBottom: 0,
+                              paddingRight: 44,
+                              colorScheme: "dark",
+                              color: deadline ? "#fff" : "var(--text-faint)",
+                            }}
+                          />
+                          <span
+                            style={{
+                              position: "absolute",
+                              right: 14,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              fontSize: 18,
+                              pointerEvents: "none",
+                              userSelect: "none",
                             }}
                           >
-                            Goes live:{" "}
-                            {new Date(scheduledAt).toLocaleString("en-IN", {
-                              timeZone: "Asia/Kolkata",
-                              weekday: "short",
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}{" "}
-                            IST
-                          </div>
-                        )}
-                      </div>
-                    )}
+                            📅
+                          </span>
+                        </div>
 
-                    {/* Exempt Members */}
-                    <div style={{ marginTop: 16 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#a78bfa",
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          fontFamily: "'DM Mono',monospace",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Exempt Members (optional)
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "var(--text-faint)",
-                          marginBottom: 10,
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        These members skip this quiz and can view solutions
-                        directly.
-                      </div>
-                      <div
-                        style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
-                      >
-                        {TEAM_MEMBERS.map((m) => {
-                          const sel = exemptUsers.includes(m.id);
-                          return (
-                            <button
-                              key={m.id}
-                              onClick={() =>
-                                setExemptUsers(
-                                  sel
-                                    ? exemptUsers.filter((id) => id !== m.id)
-                                    : [...exemptUsers, m.id]
-                                )
-                              }
-                              style={{
-                                padding: "5px 12px",
-                                borderRadius: 20,
-                                border: `1px solid ${
-                                  sel ? "#a78bfa" : "var(--border)"
-                                }`,
-                                background: sel
-                                  ? "rgba(167,139,250,0.15)"
-                                  : "var(--navy3)",
-                                color: sel ? "#a78bfa" : "var(--text-faint)",
-                                fontSize: 12,
-                                fontWeight: sel ? 700 : 400,
-                                cursor: "pointer",
-                                transition: "all 0.15s",
-                              }}
-                            >
-                              {sel ? "✓ " : ""}
-                              {m.name.split(" ")[0]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {exemptUsers.length > 0 && (
+                        {/* Publish timing */}
                         <div
                           style={{
                             fontSize: 11,
-                            color: "#a78bfa",
-                            marginTop: 8,
+                            color: "var(--text-faint)",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
                             fontFamily: "'DM Mono',monospace",
+                            marginBottom: 10,
                           }}
                         >
-                          {exemptUsers.length} member
-                          {exemptUsers.length !== 1 ? "s" : ""} exempt
-                          <button
-                            onClick={() => setExemptUsers([])}
+                          Publish Timing
+                        </div>
+                        <div
+                          style={{ display: "flex", gap: 8, marginBottom: 14 }}
+                        >
+                          {[
+                            { val: "now", label: "🚀 Post Now" },
+                            { val: "later", label: "🕐 Schedule for Later" },
+                          ].map((o) => (
+                            <button
+                              key={o.val}
+                              onClick={() => setPostType(o.val)}
+                              style={{
+                                flex: 1,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid",
+                                borderColor:
+                                  postType === o.val
+                                    ? "var(--teal)"
+                                    : "var(--border)",
+                                background:
+                                  postType === o.val
+                                    ? "var(--teal-dim)"
+                                    : "transparent",
+                                color:
+                                  postType === o.val
+                                    ? "var(--teal)"
+                                    : "var(--text-dim)",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                              }}
+                            >
+                              {o.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {postType === "later" && (
+                          <div className="slideIn">
+                            <label
+                              style={{
+                                fontSize: 11,
+                                color: "var(--amber)",
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase",
+                                fontFamily: "'DM Mono',monospace",
+                                display: "block",
+                                marginBottom: 8,
+                              }}
+                            >
+                              Go-Live Date &amp; Time (IST)
+                            </label>
+                            <input
+                              type="datetime-local"
+                              className="field"
+                              value={scheduledAt}
+                              onChange={(e) => setScheduledAt(e.target.value)}
+                              style={{
+                                colorScheme: "dark",
+                                color: scheduledAt
+                                  ? "#fff"
+                                  : "var(--text-faint)",
+                                marginBottom: scheduledAt ? 4 : 0,
+                              }}
+                            />
+                            {scheduledAt && (
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: "var(--amber)",
+                                  fontFamily: "'DM Mono',monospace",
+                                  marginBottom: 4,
+                                }}
+                              >
+                                Goes live:{" "}
+                                {new Date(scheduledAt).toLocaleString("en-IN", {
+                                  timeZone: "Asia/Kolkata",
+                                  weekday: "short",
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}{" "}
+                                IST
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Exempt Members */}
+                        <div style={{ marginTop: 16 }}>
+                          <div
                             style={{
-                              marginLeft: 10,
-                              background: "none",
-                              border: "none",
-                              color: "var(--text-faint)",
                               fontSize: 11,
-                              cursor: "pointer",
+                              color: "#a78bfa",
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              fontFamily: "'DM Mono',monospace",
+                              marginBottom: 6,
                             }}
                           >
-                            clear
-                          </button>
+                            Exempt Members (optional)
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-faint)",
+                              marginBottom: 10,
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            These members skip this quiz and can view solutions
+                            directly.
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                            }}
+                          >
+                            {TEAM_MEMBERS.map((m) => {
+                              const sel = exemptUsers.includes(m.id);
+                              return (
+                                <button
+                                  key={m.id}
+                                  onClick={() =>
+                                    setExemptUsers(
+                                      sel
+                                        ? exemptUsers.filter(
+                                            (id) => id !== m.id
+                                          )
+                                        : [...exemptUsers, m.id]
+                                    )
+                                  }
+                                  style={{
+                                    padding: "5px 12px",
+                                    borderRadius: 20,
+                                    border: `1px solid ${
+                                      sel ? "#a78bfa" : "var(--border)"
+                                    }`,
+                                    background: sel
+                                      ? "rgba(167,139,250,0.15)"
+                                      : "var(--navy3)",
+                                    color: sel
+                                      ? "#a78bfa"
+                                      : "var(--text-faint)",
+                                    fontSize: 12,
+                                    fontWeight: sel ? 700 : 400,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                  }}
+                                >
+                                  {sel ? "✓ " : ""}
+                                  {m.name.split(" ")[0]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {exemptUsers.length > 0 && (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "#a78bfa",
+                                marginTop: 8,
+                                fontFamily: "'DM Mono',monospace",
+                              }}
+                            >
+                              {exemptUsers.length} member
+                              {exemptUsers.length !== 1 ? "s" : ""} exempt
+                              <button
+                                onClick={() => setExemptUsers([])}
+                                style={{
+                                  marginLeft: 10,
+                                  background: "none",
+                                  border: "none",
+                                  color: "var(--text-faint)",
+                                  fontSize: 11,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                clear
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+
+                        {/* Done button to collapse */}
+                        <button
+                          onClick={() => {
+                            if (!newQuizTitle.trim()) {
+                              alert("Please enter a quiz title first.");
+                              return;
+                            }
+                            setShowMetaPanel(false);
+                          }}
+                          style={{
+                            marginTop: 20,
+                            width: "100%",
+                            padding: "11px",
+                            background: "var(--teal-dim)",
+                            border: "1px solid var(--border-teal)",
+                            borderRadius: 10,
+                            color: "var(--teal)",
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          Done — Start Adding Questions ↓
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Question builder */}
