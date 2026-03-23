@@ -1009,7 +1009,7 @@ export default function App() {
   const [qType, setQType] = useState("MCQ");
   const [qText, setQText] = useState("");
   const [qImage, setQImage] = useState(null);
-  const [mcqOptions, setMcqOptions] = useState(["", "", ""]);
+  const [mcqOptions, setMcqOptions] = useState(["", "", "", ""]);
   const [correctIdx, setCorrectIdx] = useState(0);
   const [ansKey, setAnsKey] = useState("");
   const [showDraftModal, setShowDraftModal] = useState(false);
@@ -1317,7 +1317,7 @@ export default function App() {
     setQText("");
     setAnsKey("");
     setQImage(null);
-    setMcqOptions(["", "", ""]);
+    setMcqOptions(["", "", "", ""]);
     setCorrectIdx(0);
   };
 
@@ -2492,21 +2492,16 @@ export default function App() {
                       </div>
                       {/* Submit button — top right, always visible */}
                       <button
+                        className="q-nav-btn submit-btn"
                         disabled={isSubmitting}
                         onClick={submitTest}
                         style={{
-                          flexShrink: 0,
-                          background: isSubmitting ? "#2a3a4a" : "var(--teal)",
-                          color: isSubmitting ? "#5a6a7a" : "var(--navy)",
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "8px 16px",
-                          fontSize: 12,
+                          width: "auto",
+                          padding: "7px 14px",
+                          fontSize: 11,
                           fontWeight: 700,
                           letterSpacing: "0.04em",
-                          cursor: isSubmitting ? "not-allowed" : "pointer",
-                          whiteSpace: "nowrap",
-                          transition: "background 0.2s",
+                          flexShrink: 0,
                         }}
                       >
                         {isSubmitting ? "Saving…" : "Save & Submit ✓"}
@@ -3389,7 +3384,7 @@ export default function App() {
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: 10,
+                              gap: 8,
                               marginBottom: 8,
                             }}
                           >
@@ -3417,6 +3412,39 @@ export default function App() {
                                 65 + i
                               )}`}
                             />
+                            {mcqOptions.length > 2 && (
+                              <button
+                                onClick={() => {
+                                  const n = mcqOptions.filter(
+                                    (_, x) => x !== i
+                                  );
+                                  setMcqOptions(n);
+                                  if (correctIdx >= n.length)
+                                    setCorrectIdx(n.length - 1);
+                                  else if (correctIdx === i) setCorrectIdx(0);
+                                  else if (correctIdx > i)
+                                    setCorrectIdx(correctIdx - 1);
+                                }}
+                                style={{
+                                  background: "rgba(239,68,68,0.08)",
+                                  border: "1px solid rgba(239,68,68,0.25)",
+                                  color: "var(--red)",
+                                  borderRadius: 7,
+                                  width: 28,
+                                  height: 28,
+                                  fontSize: 14,
+                                  cursor: "pointer",
+                                  flexShrink: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  lineHeight: 1,
+                                }}
+                                title="Remove option"
+                              >
+                                ×
+                              </button>
+                            )}
                           </div>
                         ))}
                         <button
