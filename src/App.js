@@ -2499,7 +2499,7 @@ export default function App() {
                         onClick={submitTest}
                         style={{
                           width: "auto",
-                          padding: "7px 14px",
+                          padding: "7px 5px",
                           fontSize: 11,
                           fontWeight: 700,
                           letterSpacing: "0.04em",
