@@ -75,101 +75,764 @@ const shuffleArray = (arr) => {
 };
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&family=Sora:wght@300;400;500;600;700;800&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  :root{
-    --navy:#0a0f1e;--navy3:#1a2235;--panel:#141b2d;
-    --teal:#00d4b8;--teal2:#00b89e;--teal-dim:rgba(0,212,184,0.12);--teal-glow:rgba(0,212,184,0.25);
-    --amber:#f59e0b;--red:#ef4444;--green:#22c55e;
-    --text:#edf2f7;--text-dim:#b8c8d8;--text-faint:#8096b0;
-    --border:rgba(255,255,255,0.09);--border-teal:rgba(0,212,184,0.3);
+  
+  :root {
+    --navy: #0d1226;
+    --navy2: #151b33;
+    --navy3: #1d2442;
+    --panel: rgba(26, 33, 59, 0.75);
+    --panel-solid: #1d2442;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-hover: rgba(0, 212, 184, 0.35);
+    
+    --teal: #00d4b8;
+    --teal2: #00b89e;
+    --teal-dim: rgba(0, 212, 184, 0.12);
+    --teal-glow: rgba(0, 212, 184, 0.25);
+    --border-teal: rgba(0, 212, 184, 0.3);
+    
+    --amber: #f59e0b;
+    --amber2: #d97706;
+    --amber-dim: rgba(245, 158, 11, 0.12);
+    --amber-glow: rgba(245, 158, 11, 0.25);
+    
+    --red: #ef4444;
+    --red2: #dc2626;
+    --red-dim: rgba(239, 68, 68, 0.12);
+    --red-glow: rgba(239, 68, 68, 0.25);
+    
+    --green: #22c55e;
+    --green2: #16a34a;
+    --green-dim: rgba(34, 197, 94, 0.12);
+    --green-glow: rgba(34, 197, 94, 0.25);
+    
+    --purple: #a78bfa;
+    --purple2: #8b5cf6;
+    --purple-dim: rgba(167, 139, 250, 0.12);
+    --purple-glow: rgba(167, 139, 250, 0.25);
+    
+    --text: #edf2f7;
+    --text-dim: #b8c8d8;
+    --text-faint: #8096b0;
+    --header-bg: rgba(13, 18, 38, 0.85);
+    --header-bg-idle: rgba(6, 9, 19, 0.65);
+    --header-border-idle: rgba(255, 255, 255, 0.09);
+    --header-border-scroll: rgba(0, 212, 184, 0.35);
+    --card-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    --input-bg: rgba(26, 34, 53, 0.6);
+    
+    --font-sans: 'Outfit', 'Sora', sans-serif;
+    --font-mono: 'DM Mono', monospace;
   }
-  body{background:var(--navy);color:var(--text);font-family:'Sora',sans-serif;}
-  input,select,textarea,button{font-family:'Sora',sans-serif;}
-  ::-webkit-scrollbar{width:4px;height:4px;}
+
+  body.light-mode {
+    --navy: #f8fafc;
+    --navy2: #f1f5f9;
+    --navy3: #ffffff;
+    --panel: rgba(255, 255, 255, 0.75);
+    --panel-solid: #ffffff;
+    --border: rgba(15, 23, 42, 0.08);
+    --border-hover: rgba(13, 148, 136, 0.25);
+    
+    --teal: #0d9488;
+    --teal2: #0f766e;
+    --teal-dim: rgba(13, 148, 136, 0.06);
+    --teal-glow: rgba(13, 148, 136, 0.12);
+    --border-teal: rgba(13, 148, 136, 0.25);
+    
+    --amber: #b45309;
+    --amber2: #92400e;
+    --amber-dim: rgba(180, 83, 9, 0.06);
+    --amber-glow: rgba(180, 83, 9, 0.1);
+    
+    --red: #be123c;
+    --red2: #9f1239;
+    --red-dim: rgba(190, 18, 60, 0.06);
+    --red-glow: rgba(190, 18, 60, 0.10);
+    
+    --green: #047857;
+    --green2: #065f46;
+    --green-dim: rgba(4, 120, 87, 0.06);
+    --green-glow: rgba(4, 120, 87, 0.1);
+    
+    --purple: #6d28d9;
+    --purple2: #5b21b6;
+    --purple-dim: rgba(109, 40, 217, 0.06);
+    --purple-glow: rgba(109, 40, 217, 0.1);
+    
+    --text: #0f172a;
+    --text-dim: #334155;
+    --text-faint: #64748b;
+    --header-bg: rgba(248, 250, 252, 0.85);
+    --header-bg-idle: rgba(226, 232, 240, 0.65);
+    --header-border-idle: rgba(15, 23, 42, 0.08);
+    --header-border-scroll: rgba(13, 148, 136, 0.25);
+    --card-shadow: 0 15px 30px -10px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(0,0,0,0.03);
+    --input-bg: rgba(255, 255, 255, 0.95);
+  }
+
+  body {
+    background: radial-gradient(circle at top center, var(--teal-dim) 0%, var(--navy) 75%), var(--navy);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    transition: background 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Cybernetic background decorations in dark mode */
+  body:not(.light-mode)::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0, 242, 254, 0.03) 0%, rgba(139, 92, 246, 0.005) 50%, transparent 100%);
+    filter: blur(100px);
+    z-index: -1;
+    pointer-events: none;
+  }
+  body:not(.light-mode)::after {
+    content: '';
+    position: fixed;
+    bottom: -10%;
+    right: 10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.03) 0%, rgba(0, 242, 254, 0.005) 50%, transparent 100%);
+    filter: blur(100px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  input,select,textarea,button{font-family:var(--font-sans);}
+  ::-webkit-scrollbar{width:6px;height:6px;}
   ::-webkit-scrollbar-track{background:var(--navy);}
-  ::-webkit-scrollbar-thumb{background:var(--teal-glow);border-radius:2px;}
+  ::-webkit-scrollbar-thumb{background:var(--teal-glow);border-radius:3px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border-teal);}
+
+  /* Micro-animations */
   .pulse{animation:pulse 2s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
-  .fadeIn{animation:fadeIn 0.35s ease forwards;}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-  .slideIn{animation:slideIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;}
-  @keyframes slideIn{from{opacity:0;transform:translateX(24px);}to{opacity:1;transform:translateX(0);}}
-  .card-hover{transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s;}
-  .card-hover:hover{transform:translateY(-2px);border-color:var(--border-teal)!important;box-shadow:0 8px 32px rgba(0,212,184,0.1);}
-  .btn-primary{width:100%;padding:14px 20px;background:var(--teal);color:var(--navy);border:none;border-radius:10px;font-weight:700;font-size:14px;letter-spacing:0.04em;cursor:pointer;transition:background 0.2s,transform 0.15s;text-transform:uppercase;}
-  .btn-primary:hover{background:var(--teal2);transform:translateY(-1px);}
-  .btn-primary:disabled{background:#2a3a4a;color:#5a6a7a;cursor:not-allowed;transform:none;}
-  .btn-ghost{background:none;border:1px solid var(--border-teal);color:var(--teal);padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:0.05em;transition:background 0.2s;}
-  .btn-ghost:hover{background:var(--teal-dim);}
-  .btn-back{background:none;border:none;color:var(--text-faint);font-size:12px;font-weight:600;cursor:pointer;letter-spacing:0.05em;padding:0;display:flex;align-items:center;gap:6px;margin-bottom:18px;transition:color 0.2s;}
-  .btn-back:hover{color:var(--teal);}
-  .field{width:100%;background:var(--navy3);border:1px solid var(--border);color:var(--text);padding:13px 16px;border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;transition:border-color 0.2s;}
-  .field:focus{border-color:var(--border-teal);}
-  .field::placeholder{color:var(--text-faint);}
-  .field.error{border-color:var(--red);}
-  .option-btn{width:100%;padding:13px 16px;margin-bottom:8px;border-radius:10px;border:1px solid var(--border);background:var(--navy3);color:var(--text);text-align:left;cursor:pointer;font-size:14px;font-family:'Sora',sans-serif;transition:border-color 0.2s,background 0.2s;}
-  .option-btn:hover{border-color:var(--border-teal);background:var(--teal-dim);}
-  .option-btn.selected{border-color:var(--teal);background:var(--teal-dim);color:var(--teal);font-weight:600;}
-  .pw-rule{font-size:11px;padding:3px 0;display:flex;align-items:center;gap:6px;}
-  .pw-rule.pass{color:var(--green);}
-  .pw-rule.fail{color:var(--text-faint);}
-  .modal-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.88);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.2s ease;}
-  .modal-box{background:var(--panel);border:1px solid var(--border-teal);border-radius:20px;padding:28px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 40px rgba(0,212,184,0.08);}
-  .draft-item{background:var(--navy);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;transition:border-color 0.2s;}
-  .draft-item:hover{border-color:rgba(0,212,184,0.2);}
+  
+  .fadeIn{animation:fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(16px);filter:blur(6px);}to{opacity:1;transform:translateY(0);filter:blur(0);}}
+  
+  .slideIn{animation:slideIn 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) forwards;}
+  @keyframes slideIn{from{opacity:0;transform:translateX(20px);filter:blur(4px);}to{opacity:1;transform:translateX(0);filter:blur(0);}}
 
-  /* Password eye */
-  .pw-wrap{position:relative;margin-bottom:12px;}
-  .pw-wrap .field{margin-bottom:0;padding-right:46px;}
-  .pw-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#fff;font-size:15px;padding:4px;line-height:1;opacity:0.75;display:flex;align-items:center;justify-content:center;}
-  .pw-eye:hover{opacity:1;}
+  /* Premium Card Styles */
+  .glass-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(20px);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .glass-panel-hover:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-teal);
+    box-shadow: 0 16px 40px -10px rgba(0, 242, 254, 0.1), var(--card-shadow);
+  }
 
-  /* File upload */
-  input[type="file"]{display:none;}
-  .file-upload-btn{display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;background:var(--navy3);border:1px dashed rgba(0,212,184,0.4);color:var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:border-color 0.2s,background 0.2s;}
-  .file-upload-btn:hover{background:var(--teal-dim);border-color:var(--teal);}
+  /* Dashboard Grid */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
 
-  /* Top nav */
-  .top-nav-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;transition:border-color 0.2s,opacity 0.2s;flex:1;}
-  .top-nav-btn.active{border-bottom-color:var(--teal);}
-  .top-nav-btn:not([disabled]):hover .nav-tooltip{opacity:1;transform:translateX(-50%) translateY(0);}
-  .top-nav-btn[disabled]{cursor:not-allowed;}
-  .nav-tooltip{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(-4px);background:var(--navy3);border:1px solid var(--border-teal);color:var(--teal);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s;z-index:300;}
-  .nav-tooltip::before{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);border:4px solid transparent;border-bottom-color:var(--border-teal);}
+  /* Interactive cards on Dashboard */
+  .menu-card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    cursor: pointer;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .menu-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    transition: background 0.3s ease;
+  }
+  .menu-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--card-shadow);
+  }
+  .menu-card.menu-teal:hover {
+    border-color: rgba(0, 242, 254, 0.35);
+    box-shadow: 0 16px 40px -15px rgba(0, 242, 254, 0.25), var(--card-shadow);
+  }
+  .menu-card.menu-teal::before { background: var(--teal); }
+  
+  .menu-card.menu-amber:hover {
+    border-color: rgba(251, 191, 36, 0.35);
+    box-shadow: 0 16px 40px -15px rgba(251, 191, 36, 0.25), var(--card-shadow);
+  }
+  .menu-card.menu-amber::before { background: var(--amber); }
+
+  .menu-card.menu-green:hover {
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: 0 16px 40px -15px rgba(16, 185, 129, 0.25), var(--card-shadow);
+  }
+  .menu-card.menu-green::before { background: var(--green); }
+
+  .menu-card.menu-purple:hover {
+    border-color: rgba(167, 139, 250, 0.35);
+    box-shadow: 0 16px 40px -15px rgba(167, 139, 250, 0.25), var(--card-shadow);
+  }
+  .menu-card.menu-purple::before { background: var(--purple); }
+
+  .menu-card.menu-red:hover {
+    border-color: rgba(244, 63, 94, 0.35);
+    box-shadow: 0 16px 40px -15px rgba(244, 63, 94, 0.25), var(--card-shadow);
+  }
+  .menu-card.menu-red::before { background: var(--red); }
+
+  /* Premium Buttons */
+  .btn-primary {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, var(--teal) 0%, var(--teal2) 100%);
+    color: var(--navy);
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 8px 20px -8px var(--teal-glow);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -6px var(--teal-glow);
+    filter: brightness(1.05);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  .btn-primary:disabled {
+    background: var(--navy3);
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border-teal);
+    color: var(--teal);
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
+  }
+  .btn-ghost:hover {
+    background: var(--teal-dim);
+    border-color: var(--teal);
+    transform: translateY(-1px);
+  }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    padding: 6px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    transition: color 0.2s, transform 0.2s;
+  }
+  .btn-back:hover {
+    color: var(--teal);
+    transform: translateX(-3px);
+  }
+
+  /* Form Fields */
+  .field {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    margin-bottom: 14px;
+    outline: none;
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    backdrop-filter: blur(4px);
+  }
+  .field:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-dim);
+    background: var(--navy3);
+  }
+  .field::placeholder { color: var(--text-faint); }
+  .field.error { border-color: var(--red); }
+
+  /* Option Buttons in Tests */
+  .option-btn {
+    width: 100%;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--navy3);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: var(--font-sans);
+    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    align-items: center;
+  }
+  .option-btn:hover {
+    border-color: var(--border-teal);
+    background: var(--teal-dim);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -10px var(--teal-glow);
+  }
+  .option-btn:active { transform: translateY(0); }
+  .option-btn.selected {
+    border-color: var(--teal);
+    background: var(--teal-dim);
+    color: var(--teal);
+    font-weight: 600;
+    box-shadow: 0 8px 24px -8px var(--teal-glow);
+  }
+
+  /* Password field wrappers */
+  .pw-wrap { position: relative; margin-bottom: 14px; }
+  .pw-wrap .field { margin-bottom: 0; padding-right: 48px; }
+  .pw-eye {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-faint);
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .pw-eye:hover { opacity: 1; color: var(--teal); }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 5, 12, 0.85);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.25s ease;
+  }
+  .modal-box {
+    background: var(--panel-solid);
+    border: 1px solid var(--border-teal);
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 30px 70px -10px rgba(0, 242, 254, 0.15), var(--card-shadow);
+  }
+
+  /* File uploads */
+  input[type="file"] { display: none; }
+  .file-upload-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 20px;
+    background: var(--input-bg);
+    border: 1px dashed var(--border-teal);
+    color: var(--teal);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 14px;
+    transition: all 0.2s ease;
+  }
+  .file-upload-btn:hover {
+    background: var(--teal-dim);
+    border-color: var(--teal);
+  }
+
+  /* Top Navigation */
+  .top-nav-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: none;
+    background: none;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    flex: 1;
+    border-top: 3px solid transparent;
+  }
+  .top-nav-btn.active {
+    border-top-color: var(--teal);
+    background: var(--teal-dim);
+  }
+  .top-nav-btn:not([disabled]):hover {
+    background: var(--teal-dim);
+  }
+  .top-nav-btn:not([disabled]):hover .nav-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .nav-tooltip {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    background: var(--navy2);
+    border: 1px solid var(--border-teal);
+    color: var(--teal);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    padding: 5px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 300;
+    box-shadow: var(--card-shadow);
+  }
 
   /* Nav pending badge */
-  .nav-badge{position:absolute;top:3px;right:5px;background:var(--red);color:#fff;border-radius:20px;min-width:16px;height:16px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 6px rgba(239,68,68,0.5);}
+  .nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background: var(--red);
+    color: #fff;
+    border-radius: 20px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+  }
 
-  /* Quiz security */
-  .no-select{-webkit-user-select:none;-moz-user-select:none;user-select:none;}
-  .watermark{position:fixed;inset:0;pointer-events:none;z-index:150;display:flex;align-items:center;justify-content:center;opacity:0.045;transform:rotate(-30deg);font-size:clamp(18px,4vw,32px);font-weight:900;color:#fff;font-family:'DM Mono',monospace;letter-spacing:0.08em;white-space:nowrap;text-align:center;line-height:1.8;text-transform:uppercase;}
-  .strike-overlay{position:fixed;inset:0;z-index:500;background:rgba(5,5,15,0.95);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.2s ease;}
-  .strike-box{background:#12192b;border:1px solid rgba(239,68,68,0.5);border-radius:20px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(239,68,68,0.15);}
+  /* Security Watermark & Warning */
+  .no-select { -webkit-user-select:none; -moz-user-select:none; user-select:none; }
+  .watermark {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.025;
+    transform: rotate(-30deg);
+    font-size: clamp(20px, 5vw, 36px);
+    font-weight: 900;
+    color: var(--text);
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 2;
+    text-transform: uppercase;
+  }
+  body.light-mode .watermark { opacity: 0.015; }
+  
+  .strike-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(3, 5, 12, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.3s ease;
+  }
+  .strike-box {
+    background: var(--navy2);
+    border: 1px solid var(--red);
+    border-radius: 24px;
+    padding: 40px 32px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(244, 63, 94, 0.15), var(--card-shadow);
+  }
 
-  /* Quiz pagination nav */
-  .q-nav-btn{flex:1;padding:13px;border-radius:10px;font-weight:700;font-size:13px;letter-spacing:0.04em;cursor:pointer;transition:all 0.2s;border:1px solid var(--border-teal);background:var(--navy3);color:var(--teal);}
-  .q-nav-btn:hover:not(:disabled){background:var(--teal-dim);}
-  .q-nav-btn.submit-btn{background:var(--teal);color:var(--navy);border-color:var(--teal);}
-  .q-nav-btn.submit-btn:hover:not(:disabled){background:var(--teal2);}
-  .q-nav-btn:disabled{opacity:0.3;cursor:not-allowed;}
+  /* Navigation elements in tests */
+  .q-nav-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border-teal);
+    background: var(--navy3);
+    color: var(--teal);
+  }
+  .q-nav-btn:hover:not(:disabled) {
+    background: var(--teal-dim);
+    border-color: var(--teal);
+  }
+  .q-nav-btn.submit-btn {
+    background: linear-gradient(135deg, var(--red) 0%, var(--red2) 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 8px 20px -8px rgba(244, 63, 94, 0.4);
+  }
+  .q-nav-btn.submit-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -6px rgba(244, 63, 94, 0.4);
+  }
+  .q-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
 
-  /* Q dot navigator */
-  .q-dot{width:26px;height:26px;border-radius:7px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;border:1px solid var(--border);}
-  .q-dot.answered{background:var(--teal);color:var(--navy);border-color:var(--teal);}
-  .q-dot.current{border-color:var(--teal);color:var(--teal);}
-  .q-dot.unanswered{background:var(--navy3);color:var(--text-faint);}
+  /* Dot Selector for Questions */
+  .q-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    border: 1px solid var(--border);
+  }
+  .q-dot:hover {
+    transform: translateY(-2px);
+  }
+  .q-dot.answered {
+    background: var(--teal);
+    color: var(--navy);
+    border-color: var(--teal);
+    box-shadow: 0 4px 10px -3px var(--teal-glow);
+  }
+  .q-dot.current {
+    border-color: var(--teal);
+    color: var(--teal);
+    background: var(--teal-dim);
+    box-shadow: 0 0 10px var(--teal-glow);
+  }
+  .q-dot.unanswered {
+    background: var(--navy3);
+    color: var(--text-faint);
+  }
 
-  /* Answer review cards */
-  .ans-card-correct{background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.25);border-radius:14px;padding:18px 20px;margin-bottom:12px;}
-  .ans-card-wrong{background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:14px;padding:18px 20px;margin-bottom:12px;}
+  /* Answer review widgets */
+  .ans-card-correct {
+    background: var(--green-dim);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .ans-card-wrong {
+    background: var(--red-dim);
+    border: 1px solid rgba(244, 63, 94, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
 
-  /* Scheduled badge */
-  .sched-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 8px;border-radius:20px;background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.3);}
+  .sched-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--amber-dim);
+    color: var(--amber);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+  }
 
-  /* Pending badge on home card */
-  .home-badge{position:absolute;top:14px;right:14px;background:var(--red);color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;}
-`;
+  .home-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: var(--red);
+    color: #fff;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    box-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
+  }
+
+  /* Draft Items */
+  .draft-item {
+    background: var(--navy2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+  .draft-item:hover {
+    border-color: var(--border-teal);
+  }
+  
+  /* 3D Podium Layout */
+  .podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    margin-top: 16px;
+  }
+  
+  .podium-step {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px 12px 16px 12px;
+    text-align: center;
+    position: relative;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  
+  .podium-step.rank-1 {
+    flex: 1.1;
+    height: 180px;
+    border: 2px solid var(--teal);
+    box-shadow: 0 12px 40px -10px var(--teal-glow), var(--card-shadow);
+  }
+  
+  .podium-step.rank-2 {
+    height: 145px;
+    border: 1px solid var(--purple);
+    box-shadow: 0 8px 30px -10px var(--purple-glow), var(--card-shadow);
+  }
+  
+  .podium-step.rank-3 {
+    height: 125px;
+    border: 1px solid var(--amber);
+    box-shadow: 0 8px 30px -10px var(--amber-glow), var(--card-shadow);
+  }
+  
+  .podium-badge {
+    position: absolute;
+    top: -20px;
+    font-size: 24px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+    animation: float 3s ease-in-out infinite;
+  }
+  .podium-step.rank-1 .podium-badge { animation-delay: 0s; }
+  .podium-step.rank-2 .podium-badge { animation-delay: 0.5s; }
+  .podium-step.rank-3 .podium-badge { animation-delay: 1s; }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  
+  @media (max-width: 520px) {
+    .podium-container {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .podium-step {
+      height: auto !important;
+      padding: 16px 20px;
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: center;
+      text-align: left;
+    }
+    .podium-badge {
+      position: static;
+      margin-right: 14px;
+      font-size: 20px;
+      animation: none;
+      top: auto;
+    }
+    .podium-step.rank-1 {
+      border-width: 1px;
+    }
+  }
+`;;
 
 /* ─── Avatar ─── */
 function Avatar({ name, size = 36 }) {
@@ -295,22 +958,77 @@ function PwField({ value, onChange, placeholder, onKeyDown, hasError }) {
   );
 }
 
+/* ─── Image Compressor ─── */
+const compressImage = (dataUrl, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = (err) => reject(err);
+  });
+};
+
 /* ─── Image Uploader ─── */
 function ImageUploader({ value, onChange }) {
   const ref = useRef();
+  const [isCompressing, setIsCompressing] = useState(false);
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    setIsCompressing(true);
     const reader = new FileReader();
-    reader.onload = (ev) => onChange(ev.target.result);
+    reader.onload = async (ev) => {
+      try {
+        const compressed = await compressImage(ev.target.result);
+        onChange(compressed);
+      } catch (err) {
+        console.error("Image compression failed, fallback to original", err);
+        onChange(ev.target.result);
+      } finally {
+        setIsCompressing(false);
+      }
+    };
     reader.readAsDataURL(file);
   };
   return (
     <div style={{ marginBottom: 12 }}>
       <input type="file" accept="image/*" ref={ref} onChange={handleFile} />
-      <label className="file-upload-btn" onClick={() => ref.current.click()}>
-        <span>📎</span>
-        {value
+      <label
+        className="file-upload-btn"
+        onClick={() => !isCompressing && ref.current.click()}
+        style={{
+          opacity: isCompressing ? 0.7 : 1,
+          cursor: isCompressing ? "not-allowed" : "pointer",
+        }}
+      >
+        <span>{isCompressing ? "⏳" : "📎"}</span>
+        {isCompressing
+          ? "Compressing image..."
+          : value
           ? "Image selected — click to change"
           : "Attach image from device (optional)"}
       </label>
@@ -524,7 +1242,7 @@ function DraftModal({ questions, onClose, onDelete, onEdit }) {
                 <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                   <button
                     className="btn-primary"
-                    style={{ padding: "10px 16px" }}
+                    style={{ padding: "10px 16px", width: "auto" }}
                     onClick={saveEdit}
                   >
                     Save Changes
@@ -699,7 +1417,11 @@ function ResultReviewModal({ result, quiz, onClose }) {
           >
             Quiz data unavailable.
           </p>
-          <button className="btn-primary" onClick={onClose}>
+          <button
+            className="btn-primary"
+            style={{ width: "auto", display: "block", margin: "0 auto", padding: "10px 24px" }}
+            onClick={onClose}
+          >
             Close
           </button>
         </div>
@@ -968,6 +1690,24 @@ function ResultReviewModal({ result, quiz, onClose }) {
    MAIN APP
 ══════════════════════════════════════════ */
 export default function App() {
+  // ── Theme State ──
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("npd_portal_dark_mode");
+    return saved !== "false";
+  });
+
+  useEffect(() => {
+    if (!darkMode) {
+      document.body.classList.add("light-mode");
+    } else {
+      document.body.classList.remove("light-mode");
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => !prev);
+  };
+
   // ── Auth ──
   const [loginStep, setLoginStep] = useState("id");
   const [authCode, setAuthCode] = useState("");
@@ -986,6 +1726,8 @@ export default function App() {
   const [results, setResults] = useState([]);
   const [archiveQuiz, setArchiveQuiz] = useState(null);
   const [reviewResult, setReviewResult] = useState(null); // for answer review modal
+  const [leaderboardSearch, setLeaderboardSearch] = useState("");
+  const [archiveSearch, setArchiveSearch] = useState("");
 
   // ── Quiz session ──
   const [activeQuiz, setActiveQuiz] = useState(null);
@@ -1020,6 +1762,21 @@ export default function App() {
   // ── Scheduled publish ──
   const [postType, setPostType] = useState("now"); // "now" | "later"
   const [scheduledAt, setScheduledAt] = useState("");
+  const [scrolled, setScrolled] = useState(false);
+
+  // ── Scroll Listener for Header dynamic styling ──
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ── Session restore ──
   useEffect(() => {
@@ -1271,17 +2028,31 @@ export default function App() {
     if (!addedQuestions.length) return alert("Add at least one question.");
     if (postType === "later" && !scheduledAt)
       return alert("Please choose a go-live date & time.");
+
+    const quizPayload = {
+      title: newQuizTitle,
+      questions: addedQuestions,
+      author: user.name,
+      deadline,
+      createdAt: new Date(),
+      scheduledAt: postType === "later" ? scheduledAt : null,
+      exemptUsers: exemptUsers,
+    };
+
+    // Estimate payload size (limit is 1MB in Firestore)
+    const estimatedSize = JSON.stringify(quizPayload).length;
+    if (estimatedSize > 950 * 1024) {
+      setIsPublishing(false);
+      return alert(
+        `⚠️ Cannot publish quiz: The total size of this quiz with all uploaded images is too large (${Math.round(
+          estimatedSize / 1024
+        )} KB) and exceeds the database limit of 1MB. Please remove some images or upload smaller ones.`
+      );
+    }
+
     setIsPublishing(true);
     try {
-      await addDoc(collection(db, "quizzes"), {
-        title: newQuizTitle,
-        questions: addedQuestions,
-        author: user.name,
-        deadline,
-        createdAt: new Date(),
-        scheduledAt: postType === "later" ? scheduledAt : null,
-        exemptUsers: exemptUsers,
-      });
+      await addDoc(collection(db, "quizzes"), quizPayload);
       const msg =
         postType === "later"
           ? `📅 Quiz scheduled for ${new Date(scheduledAt).toLocaleString(
@@ -1469,16 +2240,20 @@ export default function App() {
         />
       )}
 
-      <div style={{ background: "var(--navy)", minHeight: "100vh" }}>
+      <div style={{ minHeight: "100vh" }}>
         {/* ── HEADER ── */}
         <header
           style={{
-            background: "var(--panel)",
-            borderBottom: "1px solid var(--border)",
+            background: scrolled ? "var(--header-bg)" : "var(--header-bg-idle)",
+            backdropFilter: "blur(12px)",
+            borderBottom: scrolled
+              ? "1px solid var(--header-border-scroll)"
+              : "1px solid var(--header-border-idle)",
             padding: "0 24px",
             position: "sticky",
             top: 0,
             zIndex: 100,
+            transition: "all 0.3s ease",
           }}
         >
           <div style={{ maxWidth: 800, margin: "auto" }}>
@@ -1509,18 +2284,35 @@ export default function App() {
                     boxShadow: "0 0 8px var(--teal)",
                   }}
                 />
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: "var(--teal)",
-                    fontFamily: "'DM Mono',monospace",
-                  }}
-                >
-                  CTC PORTAL
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: "var(--teal)",
+                      fontFamily: "'DM Mono',monospace",
+                    }}
+                  >
+                    CTC PORTAL
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontFamily: "'DM Mono',monospace",
+                      background: "var(--teal-dim)",
+                      color: "var(--teal)",
+                      border: "1px solid var(--border-teal)",
+                      padding: "1px 5px",
+                      borderRadius: 4,
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    v2.0
+                  </span>
+                </div>
               </div>
               <span
                 style={{
@@ -1540,12 +2332,43 @@ export default function App() {
                   gap: 12,
                 }}
               >
+                <button
+                  onClick={toggleDarkMode}
+                  title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                  style={{
+                    background: "none",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-dim)",
+                    borderRadius: "50%",
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    padding: 0,
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border-teal)";
+                    e.currentTarget.style.color = "var(--teal)";
+                    e.currentTarget.style.boxShadow = "0 0 8px var(--teal-glow)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.color = "var(--text-dim)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  {darkMode ? "☀️" : "🌙"}
+                </button>
                 <img
                   src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Emerson_Electric_Company.svg/3840px-Emerson_Electric_Company.svg.png"
                   style={{
                     height: 28,
-                    filter: "brightness(0) invert(1)",
-                    opacity: 0.7,
+                    filter: darkMode ? "brightness(0) invert(1)" : "none",
+                    opacity: darkMode ? 0.7 : 1,
                   }}
                   alt="Emerson"
                 />
@@ -1619,19 +2442,19 @@ export default function App() {
               style={{
                 display: "flex",
                 gap: 24,
-                alignItems: "flex-start",
+                alignItems: "stretch",
                 flexWrap: "wrap",
               }}
             >
               {/* Hero image */}
               <div
+                className="glass-panel"
                 style={{
                   flex: "1 1 360px",
-                  borderRadius: 20,
+                  padding: 0,
                   overflow: "hidden",
                   height: 520,
                   position: "relative",
-                  border: "1px solid var(--border)",
                 }}
               >
                 <img
@@ -1640,7 +2463,7 @@ export default function App() {
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
-                    opacity: 0.85,
+                    opacity: 0.65,
                   }}
                   alt="Engineering"
                 />
@@ -1649,37 +2472,37 @@ export default function App() {
                     position: "absolute",
                     inset: 0,
                     background:
-                      "linear-gradient(to top, var(--navy) 0%, transparent 60%)",
+                      "linear-gradient(to top, var(--navy) 10%, rgba(5,8,20,0) 80%)",
                   }}
                 />
                 <div
                   style={{
                     position: "absolute",
-                    bottom: 24,
-                    left: 24,
-                    right: 24,
+                    bottom: 32,
+                    left: 32,
+                    right: 32,
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       color: "var(--teal)",
-                      letterSpacing: "0.15em",
+                      letterSpacing: "0.2em",
                       textTransform: "uppercase",
-                      fontFamily: "'DM Mono',monospace",
-                      marginBottom: 8,
+                      fontFamily: "var(--font-mono)",
+                      marginBottom: 10,
+                      fontWeight: 700,
                     }}
                   >
                     NPD Division
                   </div>
                   <div
                     style={{
-                      fontSize: 26,
+                      fontSize: 32,
                       fontWeight: 800,
-                      lineHeight: 2,
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                      fontFamily: "'DM Mono',monospace",
+                      lineHeight: 1.2,
+                      letterSpacing: "0.02em",
+                      color: "#fff",
                     }}
                   >
                     Team Portal
@@ -1688,16 +2511,7 @@ export default function App() {
               </div>
 
               {/* Auth panel */}
-              <div style={{ flex: "1 1 220px" }}>
-                <div
-                  style={{
-                    background: "var(--panel)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 20,
-                    padding: 28,
-                    marginBottom: 16,
-                  }}
-                >
+              <div className="glass-panel" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
                   {/* Step: ID */}
                   {loginStep === "id" && (
                     <div className="slideIn">
@@ -1963,7 +2777,6 @@ export default function App() {
                   )}
                 </div>
               </div>
-            </div>
           )}
 
           {/* ══ LOGGED IN ══ */}
@@ -1971,49 +2784,47 @@ export default function App() {
             <div className="fadeIn">
               {/* User strip */}
               <div
+                className="glass-panel"
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 14,
-                  background: "var(--panel)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 16,
-                  padding: "16px 20px",
-                  marginBottom: 20,
+                  gap: 16,
+                  padding: "20px 24px",
+                  marginBottom: 24,
+                  flexWrap: "wrap",
                 }}
               >
-                <Avatar name={user.name} size={42} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>
-                    {user.name}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "var(--text-faint)",
-                      fontFamily: "'DM Mono',monospace",
-                      marginTop: 2,
-                    }}
-                  >
-                    {user.id}
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1, minWidth: 200 }}>
+                  <Avatar name={user.name} size={48} />
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 17, color: "var(--text)", letterSpacing: "-0.01em" }}>
+                      {user.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-faint)",
+                        fontFamily: "var(--font-mono)",
+                        marginTop: 3,
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      {user.id}
+                    </div>
                   </div>
                 </div>
-                <StatChip label="Tests" value={myResults.length} />
-                <StatChip
-                  label="Points"
-                  value={myScore}
-                  accent="var(--amber)"
-                />
+                <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+                  <StatChip label="Tests" value={myResults.length} />
+                  <StatChip
+                    label="Points"
+                    value={myScore}
+                    accent="var(--amber)"
+                  />
+                </div>
               </div>
               {/* ── HOME ── */}
               {view === "home" && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 14,
-                  }}
-                >
+                <div className="dashboard-grid">
                   {[
                     {
                       icon: "🎯",
@@ -2046,39 +2857,42 @@ export default function App() {
                   ].map((c) => (
                     <div
                       key={c.target}
-                      className="card-hover"
+                      className={`menu-card ${
+                        c.target === "attend"
+                          ? "menu-teal"
+                          : c.target === "archive"
+                          ? "menu-amber"
+                          : c.target === "post"
+                          ? "menu-green"
+                          : "menu-purple"
+                      }`}
                       onClick={() => setView(c.target)}
-                      style={{
-                        background: "var(--panel)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 18,
-                        padding: "22px 20px",
-                        cursor: "pointer",
-                        position: "relative",
-                      }}
                     >
-                      <div style={{ fontSize: 28, marginBottom: 10 }}>
+                      <div style={{ fontSize: 32, marginBottom: 12 }}>
                         {c.icon}
                       </div>
                       <div
                         style={{
-                          fontWeight: 700,
-                          fontSize: 14,
-                          marginBottom: 4,
+                          fontWeight: 800,
+                          fontSize: 15,
+                          marginBottom: 6,
+                          color: "var(--text)",
+                          letterSpacing: "-0.01em",
                         }}
                       >
                         {c.label}
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.4 }}>
                         {c.sub}
                       </div>
                       <div
                         style={{
-                          marginTop: 14,
-                          height: 2,
-                          width: 32,
+                          marginTop: 18,
+                          height: 3,
+                          width: c.target === "attend" && pendingCount > 0 ? 0 : 40,
                           background: c.accent,
                           borderRadius: 2,
+                          boxShadow: `0 2px 8px ${c.accent}`,
                         }}
                       />
                       {/* Pending badge on Attend Quiz card */}
@@ -2091,34 +2905,31 @@ export default function App() {
                   ))}
                   {ADMIN_IDS.includes(user.id) && (
                     <div
-                      className="card-hover"
+                      className="menu-card menu-red"
                       onClick={() => setView("admin")}
                       style={{
-                        background: "var(--panel)",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        borderRadius: 18,
-                        padding: "22px 20px",
-                        cursor: "pointer",
                         gridColumn: "1 / -1",
+                        border: "1px solid rgba(244, 63, 94, 0.25)",
                       }}
                     >
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 12,
+                          gap: 16,
+                          flexWrap: "wrap",
                         }}
                       >
-                        <div style={{ fontSize: 28 }}>📈</div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>
+                        <div style={{ fontSize: 32 }}>📈</div>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)", letterSpacing: "-0.01em" }}>
                             Lead Hub — Audits
                           </div>
                           <div
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               color: "var(--text-faint)",
-                              marginTop: 2,
+                              marginTop: 4,
                             }}
                           >
                             Team performance management
@@ -2126,17 +2937,17 @@ export default function App() {
                         </div>
                         <div
                           style={{
-                            marginLeft: "auto",
                             fontSize: 10,
                             color: "var(--red)",
                             letterSpacing: "0.1em",
-                            fontFamily: "'DM Mono',monospace",
-                            border: "1px solid rgba(239,68,68,0.3)",
-                            padding: "4px 10px",
+                            fontFamily: "var(--font-mono)",
+                            border: "1px solid rgba(244, 63, 94, 0.3)",
+                            background: "var(--red-dim)",
+                            padding: "6px 14px",
                             borderRadius: 20,
                           }}
                         >
-                          ADMIN
+                          ADMIN HUB
                         </div>
                       </div>
                     </div>
@@ -2174,13 +2985,13 @@ export default function App() {
                     .map((q) => (
                       <div
                         key={q.id}
+                        className="glass-panel"
                         style={{
-                          background: "var(--panel)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 16,
-                          padding: "18px 20px",
-                          marginBottom: 12,
-                          opacity: 0.5,
+                          marginBottom: 16,
+                          opacity: 0.6,
+                          borderStyle: "dashed",
+                          borderWidth: "1px",
+                          borderColor: "var(--amber)",
                         }}
                       >
                         <div
@@ -2188,15 +2999,16 @@ export default function App() {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            marginBottom: 8,
+                            marginBottom: 12,
                           }}
                         >
                           <span className="sched-badge">🕐 Scheduled</span>
                           <span
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               color: "var(--amber)",
-                              fontFamily: "'DM Mono',monospace",
+                              fontFamily: "var(--font-mono)",
+                              fontWeight: 700,
                             }}
                           >
                             {new Date(q.scheduledAt).toLocaleString("en-IN", {
@@ -2209,7 +3021,7 @@ export default function App() {
                             IST
                           </span>
                         </div>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>
+                        <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text)" }}>
                           {q.title}
                         </div>
                       </div>
@@ -2226,38 +3038,41 @@ export default function App() {
                     return (
                       <div
                         key={q.id}
+                        className="glass-panel glass-panel-hover"
                         style={{
-                          background: "var(--panel)",
-                          border: `1px solid ${
-                            isExempt ? "rgba(167,139,250,0.3)" : "var(--border)"
-                          }`,
-                          borderRadius: 16,
-                          padding: "18px 20px",
-                          marginBottom: 12,
+                          marginBottom: 16,
                           opacity: done ? 0.6 : 1,
+                          borderLeft: isExempt
+                            ? "4px solid var(--purple)"
+                            : done
+                            ? "4px solid var(--green)"
+                            : "4px solid var(--teal)",
                         }}
                       >
                         <div
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
-                            marginBottom: 10,
+                            marginBottom: 12,
+                            alignItems: "center",
                           }}
                         >
                           <span
                             style={{
-                              fontSize: 10,
+                              fontSize: 11,
                               color: "var(--text-faint)",
-                              fontFamily: "'DM Mono',monospace",
+                              fontFamily: "var(--font-mono)",
+                              fontWeight: 600,
                             }}
                           >
-                            {q.author || "Lead"}
+                            👤 {q.author || "Lead"}
                           </span>
                           <span
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               color: "var(--red)",
-                              fontFamily: "'DM Mono',monospace",
+                              fontFamily: "var(--font-mono)",
+                              fontWeight: 700,
                             }}
                           >
                             ⏱ {q.deadline || "No Limit"}
@@ -2265,9 +3080,10 @@ export default function App() {
                         </div>
                         <div
                           style={{
-                            fontWeight: 700,
-                            fontSize: 15,
-                            marginBottom: 14,
+                            fontWeight: 800,
+                            fontSize: 16,
+                            marginBottom: 18,
+                            color: "var(--text)",
                           }}
                         >
                           {q.title}
@@ -2281,10 +3097,11 @@ export default function App() {
                           {isExempt ? (
                             <span
                               style={{
-                                fontSize: 11,
-                                color: "#a78bfa",
-                                fontWeight: 700,
-                                fontFamily: "'DM Mono',monospace",
+                                fontSize: 12,
+                                color: "var(--purple)",
+                                fontWeight: 800,
+                                fontFamily: "var(--font-mono)",
+                                letterSpacing: "0.05em",
                               }}
                             >
                               EXEMPT ✦
@@ -2294,14 +3111,15 @@ export default function App() {
                               className="btn-ghost"
                               onClick={() => startQuiz(q)}
                             >
-                              START →
+                              START TEST →
                             </button>
                           ) : (
                             <span
                               style={{
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: "var(--green)",
-                                fontWeight: 700,
+                                fontWeight: 800,
+                                fontFamily: "var(--font-mono)",
                               }}
                             >
                               COMPLETED ✓
@@ -2499,11 +3317,13 @@ export default function App() {
                         onClick={submitTest}
                         style={{
                           width: "auto",
-                          padding: "7px 5px",
+                          padding: "6px 12px",
                           fontSize: 11,
                           fontWeight: 700,
                           letterSpacing: "0.04em",
                           flexShrink: 0,
+                          flex: "none",
+                          borderRadius: "8px",
                         }}
                       >
                         {isSubmitting ? "Saving…" : "Save & Submit ✓"}
@@ -2570,80 +3390,94 @@ export default function App() {
                     const q = activeQuiz.questions[currentQIdx];
                     return (
                       <div
+                        className="glass-panel"
                         style={{
-                          background: "var(--panel)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 18,
-                          padding: 24,
                           marginBottom: 16,
+                          padding: 28,
                         }}
                       >
                         <div
                           style={{
-                            fontSize: 10,
+                            fontSize: 11,
                             color: "var(--text-faint)",
-                            fontFamily: "'DM Mono',monospace",
-                            marginBottom: 12,
+                            fontFamily: "var(--font-mono)",
+                            marginBottom: 14,
+                            fontWeight: 600,
                           }}
                         >
-                          Q{String(currentQIdx + 1).padStart(2, "0")} · {q.type}
+                          QUESTION {String(currentQIdx + 1).padStart(2, "0")} · <span style={{ color: "var(--teal)" }}>{q.type}</span>
                         </div>
                         {q.image && (
-                          <img
-                            src={q.image}
-                            style={{
-                              width: "100%",
-                              borderRadius: 10,
-                              marginBottom: 14,
-                            }}
-                            alt="Visual"
-                            onContextMenu={(e) => e.preventDefault()}
-                          />
+                          <div style={{ display: "inline-block", position: "relative", overflow: "hidden", borderRadius: 12, border: "1px solid var(--border)", marginBottom: 18, width: "100%" }}>
+                            <img
+                              src={q.image}
+                              style={{
+                                width: "100%",
+                                display: "block",
+                                maxHeight: 380,
+                                objectFit: "contain",
+                                background: "rgba(0,0,0,0.15)",
+                              }}
+                              alt="Visual question reference"
+                              onContextMenu={(e) => e.preventDefault()}
+                            />
+                          </div>
                         )}
                         <p
                           style={{
-                            fontWeight: 600,
-                            fontSize: 15,
-                            marginBottom: 18,
+                            fontWeight: 700,
+                            fontSize: 17,
+                            marginBottom: 24,
                             lineHeight: 1.6,
+                            color: "var(--text)",
                           }}
                         >
                           {q.text}
                         </p>
                         {q.options ? (
-                          q.options.map((opt, idx) => (
-                            <button
-                              key={idx}
-                              className={`option-btn${
-                                userAnswers[currentQIdx] === opt
-                                  ? " selected"
-                                  : ""
-                              }`}
-                              onClick={() =>
-                                setUserAnswers({
-                                  ...userAnswers,
-                                  [currentQIdx]: opt,
-                                })
-                              }
-                            >
-                              <span
-                                style={{
-                                  fontFamily: "'DM Mono',monospace",
-                                  fontSize: 11,
-                                  marginRight: 10,
-                                  opacity: 0.5,
-                                }}
+                          q.options.map((opt, idx) => {
+                            const isSelected = userAnswers[currentQIdx] === opt;
+                            return (
+                              <button
+                                key={idx}
+                                className={`option-btn${isSelected ? " selected" : ""}`}
+                                onClick={() =>
+                                  setUserAnswers({
+                                    ...userAnswers,
+                                    [currentQIdx]: opt,
+                                  })
+                                }
                               >
-                                {String.fromCharCode(65 + idx)}
-                              </span>
-                              {opt}
-                            </button>
-                          ))
+                                <span
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 8,
+                                    background: isSelected ? "var(--teal)" : "var(--navy)",
+                                    color: isSelected ? "var(--navy)" : "var(--text-faint)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    fontFamily: "var(--font-mono)",
+                                    marginRight: 14,
+                                    flexShrink: 0,
+                                    transition: "all 0.2s",
+                                    border: isSelected ? "none" : "1px solid var(--border)",
+                                  }}
+                                >
+                                  {String.fromCharCode(65 + idx)}
+                                </span>
+                                <span style={{ flex: 1, color: isSelected ? "var(--teal)" : "var(--text-dim)", fontWeight: isSelected ? 600 : 400 }}>{opt}</span>
+                              </button>
+                            );
+                          })
                         ) : (
                           <input
                             className="field"
                             style={{ marginBottom: 0 }}
-                            placeholder="Type your answer..."
+                            placeholder="Type your answer here..."
                             value={userAnswers[currentQIdx] || ""}
                             onChange={(e) =>
                               setUserAnswers({
@@ -2708,60 +3542,73 @@ export default function App() {
                       Solutions Archive
                     </div>
                   </div>
-                  {quizzes.map((q) => {
-                    const isExempt =
-                      q.exemptUsers && q.exemptUsers.includes(user.id);
-                    const hasTaken =
-                      results.some(
-                        (r) => r.userId === user.id && r.quizId === q.id
-                      ) || isExempt;
-                    return (
-                      <div
-                        key={q.id}
-                        className={hasTaken ? "card-hover" : ""}
-                        style={{
-                          background: "var(--panel)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 16,
-                          padding: "16px 20px",
-                          marginBottom: 12,
-                          opacity: hasTaken ? 1 : 0.4,
-                          cursor: hasTaken ? "pointer" : "default",
-                        }}
-                        onClick={() =>
-                          hasTaken
-                            ? setArchiveQuiz(q)
-                            : alert(
-                                "Complete the quiz first to unlock solutions."
-                              )
-                        }
-                      >
+
+                  <input
+                    className="field"
+                    placeholder="🔍 Search quizzes in archive..."
+                    value={archiveSearch}
+                    onChange={(e) => setArchiveSearch(e.target.value)}
+                    style={{ marginBottom: 16 }}
+                  />
+
+                  {quizzes
+                    .filter((q) => {
+                      if (!archiveSearch.trim()) return true;
+                      return q.title.toLowerCase().includes(archiveSearch.trim().toLowerCase());
+                    })
+                    .map((q) => {
+                      const isExempt =
+                        q.exemptUsers && q.exemptUsers.includes(user.id);
+                      const hasTaken =
+                        results.some(
+                          (r) => r.userId === user.id && r.quizId === q.id
+                        ) || isExempt;
+                      return (
                         <div
+                          key={q.id}
+                          className={hasTaken ? "glass-panel glass-panel-hover" : "glass-panel"}
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
+                            padding: "16px 20px",
+                            marginBottom: 12,
+                            opacity: hasTaken ? 1 : 0.5,
+                            cursor: hasTaken ? "pointer" : "default",
+                            borderLeft: hasTaken ? "4px solid var(--green)" : "4px solid var(--text-faint)",
                           }}
+                          onClick={() =>
+                            hasTaken
+                              ? setArchiveQuiz(q)
+                              : alert(
+                                  "Complete the quiz first to unlock solutions."
+                                )
+                          }
                         >
-                          <div style={{ fontWeight: 600, fontSize: 14 }}>
-                            {q.title}
-                          </div>
-                          <span
+                          <div
                             style={{
-                              fontSize: 10,
-                              fontFamily: "'DM Mono',monospace",
-                              letterSpacing: "0.07em",
-                              color: hasTaken
-                                ? "var(--green)"
-                                : "var(--text-faint)",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
                             }}
                           >
-                            {hasTaken ? "UNLOCKED" : "LOCKED"}
-                          </span>
+                            <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>
+                              {q.title}
+                            </div>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontFamily: "var(--font-mono)",
+                                letterSpacing: "0.08em",
+                                fontWeight: 700,
+                                color: hasTaken
+                                  ? "var(--green)"
+                                  : "var(--text-faint)",
+                              }}
+                            >
+                              {hasTaken ? "🔓 UNLOCKED" : "🔒 LOCKED"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
               {/* ── MY SUBMISSIONS — shown in archive tab ── */}
@@ -2908,41 +3755,45 @@ export default function App() {
                   {archiveQuiz.questions.map((q, i) => (
                     <div
                       key={i}
+                      className="glass-panel"
                       style={{
-                        background: "var(--panel)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 16,
-                        padding: "18px 20px",
-                        marginBottom: 14,
+                        marginBottom: 16,
+                        padding: 24,
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 10,
+                          fontSize: 11,
                           color: "var(--text-faint)",
-                          fontFamily: "'DM Mono',monospace",
-                          marginBottom: 8,
+                          fontFamily: "var(--font-mono)",
+                          marginBottom: 10,
+                          fontWeight: 600,
                         }}
                       >
-                        Q{String(i + 1).padStart(2, "0")} · {q.type}
+                        QUESTION {String(i + 1).padStart(2, "0")} · <span style={{ color: "var(--teal)" }}>{q.type}</span>
                       </div>
                       {q.image && (
-                        <img
-                          src={q.image}
-                          style={{
-                            width: "100%",
-                            borderRadius: 10,
-                            marginBottom: 12,
-                          }}
-                          alt="Visual"
-                        />
+                        <div style={{ display: "inline-block", position: "relative", overflow: "hidden", borderRadius: 12, border: "1px solid var(--border)", marginBottom: 14, width: "100%" }}>
+                          <img
+                            src={q.image}
+                            style={{
+                              width: "100%",
+                              display: "block",
+                              maxHeight: 280,
+                              objectFit: "contain",
+                              background: "rgba(0,0,0,0.15)",
+                            }}
+                            alt="Visual reference"
+                          />
+                        </div>
                       )}
                       <p
                         style={{
-                          fontWeight: 600,
-                          fontSize: 14,
-                          marginBottom: 14,
+                          fontWeight: 700,
+                          fontSize: 15,
+                          marginBottom: 16,
                           lineHeight: 1.5,
+                          color: "var(--text)",
                         }}
                       >
                         {q.text}
@@ -2965,16 +3816,16 @@ export default function App() {
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: 10,
-                                  padding: "11px 14px",
-                                  borderRadius: 10,
+                                  gap: 12,
+                                  padding: "12px 16px",
+                                  borderRadius: 12,
                                   fontSize: 14,
                                   background: isCorrect
-                                    ? "rgba(34,197,94,0.1)"
+                                    ? "var(--green-dim)"
                                     : "var(--navy3)",
                                   border: `1px solid ${
                                     isCorrect
-                                      ? "rgba(34,197,94,0.4)"
+                                      ? "rgba(16,185,129,0.3)"
                                       : "var(--border)"
                                   }`,
                                   color: isCorrect
@@ -2985,17 +3836,26 @@ export default function App() {
                               >
                                 <span
                                   style={{
-                                    fontFamily: "'DM Mono',monospace",
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: 6,
+                                    background: isCorrect ? "var(--green)" : "var(--navy)",
+                                    color: isCorrect ? "var(--navy)" : "var(--text-faint)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontFamily: "var(--font-mono)",
                                     fontSize: 11,
-                                    opacity: 0.6,
+                                    fontWeight: 800,
                                     flexShrink: 0,
+                                    border: isCorrect ? "none" : "1px solid var(--border)",
                                   }}
                                 >
                                   {String.fromCharCode(65 + oi)}
                                 </span>
                                 <span style={{ flex: 1 }}>{opt}</span>
                                 {isCorrect && (
-                                  <span style={{ fontSize: 16 }}>✓</span>
+                                  <span style={{ fontSize: 16, fontWeight: 800 }}>✓</span>
                                 )}
                               </div>
                             );
@@ -3005,16 +3865,19 @@ export default function App() {
                         /* Fill-blank: just show correct answer */
                         <div
                           style={{
-                            background: "rgba(34,197,94,0.1)",
-                            border: "1px solid rgba(34,197,94,0.3)",
-                            borderRadius: 10,
-                            padding: "10px 14px",
+                            background: "var(--green-dim)",
+                            border: "1px solid rgba(16,185,129,0.3)",
+                            borderRadius: 12,
+                            padding: "12px 16px",
                             fontSize: 14,
                             fontWeight: 700,
                             color: "var(--green)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                           }}
                         >
-                          ✓ {q.correct}
+                          <span style={{ fontSize: 15, fontWeight: 800 }}>✓ Correct Answer:</span> {q.correct}
                         </div>
                       )}
                     </div>
@@ -3204,8 +4067,8 @@ export default function App() {
                             style={{
                               marginBottom: 0,
                               paddingRight: 44,
-                              colorScheme: "dark",
-                              color: deadline ? "#fff" : "var(--text-faint)",
+                              colorScheme: darkMode ? "dark" : "light",
+                              color: deadline ? "var(--text)" : "var(--text-faint)",
                             }}
                           />
                           <span
@@ -3295,9 +4158,9 @@ export default function App() {
                               value={scheduledAt}
                               onChange={(e) => setScheduledAt(e.target.value)}
                               style={{
-                                colorScheme: "dark",
+                                colorScheme: darkMode ? "dark" : "light",
                                 color: scheduledAt
-                                  ? "#fff"
+                                  ? "var(--text)"
                                   : "var(--text-faint)",
                                 marginBottom: scheduledAt ? 4 : 0,
                               }}
@@ -3698,6 +4561,11 @@ export default function App() {
                     className="btn-primary"
                     style={{
                       background: isPublishing ? "#2a3a4a" : "var(--green)",
+                      width: "auto",
+                      padding: "10px 24px",
+                      fontSize: 13,
+                      margin: "0 auto",
+                      display: "block",
                     }}
                     onClick={publishQuiz}
                     disabled={isPublishing}
@@ -3711,119 +4579,196 @@ export default function App() {
                 </div>
               )}
               {/* ── RANKING ── */}
-              {view === "ranking" && (
-                <div className="fadeIn">
-                  <div style={{ marginBottom: 18 }}>
+              {view === "ranking" && (() => {
+                const sortedRanks = TEAM_MEMBERS.map((m) => ({
+                  ...m,
+                  p: results
+                    .filter((r) => r.userId === m.id)
+                    .reduce((s, c) => s + (c.score || 0), 0),
+                })).sort((a, b) => b.p - a.p);
+
+                return (
+                  <div className="fadeIn">
+                    <div style={{ marginBottom: 18 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#a78bfa",
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          fontFamily: "'DM Mono',monospace",
+                        }}
+                      >
+                        Rankings
+                      </div>
+                      <div
+                        style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}
+                      >
+                        Leaderboard
+                      </div>
+                    </div>
+
+                    <input
+                      className="field"
+                      placeholder="🔍 Search member by name or employee ID..."
+                      value={leaderboardSearch}
+                      onChange={(e) => setLeaderboardSearch(e.target.value)}
+                      style={{ marginBottom: 16 }}
+                    />
+
+                    {/* Podium (Top 3) — Only shown when search is empty */}
+                    {!leaderboardSearch.trim() && sortedRanks.length >= 3 && (
+                      <div className="podium-container">
+                        {/* 2nd Place */}
+                        <div className="podium-step rank-2">
+                          <div className="podium-badge">🥈</div>
+                          <Avatar name={sortedRanks[1].name} size={42} />
+                          <div style={{ fontWeight: 800, fontSize: 13, marginTop: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", color: "var(--text)" }}>
+                            {sortedRanks[1].name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                            {sortedRanks[1].id}
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--purple)", marginTop: 4 }}>
+                            {sortedRanks[1].p} pts
+                          </div>
+                        </div>
+
+                        {/* 1st Place */}
+                        <div className="podium-step rank-1">
+                          <div className="podium-badge">👑</div>
+                          <Avatar name={sortedRanks[0].name} size={50} />
+                          <div style={{ fontWeight: 800, fontSize: 14, marginTop: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", color: "var(--teal)" }}>
+                            {sortedRanks[0].name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                            {sortedRanks[0].id}
+                          </div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--teal)", marginTop: 4 }}>
+                            {sortedRanks[0].p} pts
+                          </div>
+                        </div>
+
+                        {/* 3rd Place */}
+                        <div className="podium-step rank-3">
+                          <div className="podium-badge">🥉</div>
+                          <Avatar name={sortedRanks[2].name} size={40} />
+                          <div style={{ fontWeight: 800, fontSize: 12, marginTop: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%", color: "var(--text)" }}>
+                            {sortedRanks[2].name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                            {sortedRanks[2].id}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--amber)", marginTop: 4 }}>
+                            {sortedRanks[2].p} pts
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Leaderboard table */}
                     <div
                       style={{
-                        fontSize: 11,
-                        color: "#a78bfa",
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        fontFamily: "'DM Mono',monospace",
+                        background: "var(--panel)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 18,
+                        overflow: "hidden",
+                        marginBottom: 24,
                       }}
                     >
-                      Rankings
-                    </div>
-                    <div
-                      style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}
-                    >
-                      Leaderboard
-                    </div>
-                  </div>
+                      {sortedRanks
+                        .filter((r) => {
+                          if (!leaderboardSearch.trim()) return true;
+                          const q = leaderboardSearch.trim().toLowerCase();
+                          return (
+                            r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((p, index) => {
+                          const absoluteIndex = sortedRanks.findIndex((x) => x.id === p.id);
+                          const medal =
+                            absoluteIndex === 0
+                              ? "🥇"
+                              : absoluteIndex === 1
+                              ? "🥈"
+                              : absoluteIndex === 2
+                              ? "🥉"
+                              : null;
+                          const isMe = p.id === user.id;
 
-                  {/* Leaderboard table */}
-                  <div
-                    style={{
-                      background: "var(--panel)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 18,
-                      overflow: "hidden",
-                      marginBottom: 24,
-                    }}
-                  >
-                    {TEAM_MEMBERS.map((m) => ({
-                      ...m,
-                      p: results
-                        .filter((r) => r.userId === m.id)
-                        .reduce((s, c) => s + (c.score || 0), 0),
-                    }))
-                      .sort((a, b) => b.p - a.p)
-                      .map((p, i) => {
-                        const medal =
-                          i === 0
-                            ? "🥇"
-                            : i === 1
-                            ? "🥈"
-                            : i === 2
-                            ? "🥉"
-                            : null;
-                        const isMe = p.id === user.id;
-                        return (
-                          <div
-                            key={p.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 14,
-                              padding: "14px 20px",
-                              background: isMe
-                                ? "rgba(0,212,184,0.06)"
-                                : "transparent",
-                              borderBottom: "1px solid var(--border)",
-                              borderLeft: isMe
-                                ? "3px solid var(--teal)"
-                                : "3px solid transparent",
-                            }}
-                          >
+                          // Hide top 3 from list if no search query (since they are in the podium)
+                          if (!leaderboardSearch.trim() && absoluteIndex < 3) return null;
+
+                          return (
                             <div
+                              key={p.id}
                               style={{
-                                width: 28,
-                                textAlign: "center",
-                                fontFamily: "'DM Mono',monospace",
-                                fontSize: medal ? 16 : 12,
-                                color: "var(--text-faint)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 14,
+                                padding: "14px 20px",
+                                background: isMe
+                                  ? "var(--teal-dim)"
+                                  : "transparent",
+                                borderBottom: "1px solid var(--border)",
+                                borderLeft: isMe
+                                  ? "3px solid var(--teal)"
+                                  : "3px solid transparent",
                               }}
                             >
-                              {medal || `${i + 1}`}
+                              <div
+                                style={{
+                                  width: 28,
+                                  textAlign: "center",
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: medal ? 16 : 12,
+                                  color: "var(--text-faint)",
+                                }}
+                              >
+                                {medal || `${absoluteIndex + 1}`}
+                              </div>
+                              <Avatar name={p.name} size={32} />
+                              <div
+                                style={{
+                                  flex: 1,
+                                  fontSize: 14,
+                                  fontWeight: isMe ? 700 : 500,
+                                }}
+                              >
+                                {p.name}
+                                {isMe && (
+                                  <span
+                                    style={{
+                                      marginLeft: 6,
+                                      fontSize: 10,
+                                      color: "var(--teal)",
+                                      background: "var(--teal-dim)",
+                                      padding: "1px 6px",
+                                      borderRadius: 4,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    YOU
+                                  </span>
+                                )}
+                              </div>
+                              <div
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 15,
+                                  fontWeight: 700,
+                                  color: absoluteIndex < 3 ? "var(--amber)" : "var(--text)",
+                                }}
+                              >
+                                {p.p}
+                              </div>
                             </div>
-                            <Avatar name={p.name} size={32} />
-                            <div
-                              style={{
-                                flex: 1,
-                                fontSize: 14,
-                                fontWeight: isMe ? 700 : 500,
-                              }}
-                            >
-                              {p.name}
-                              {isMe && (
-                                <span
-                                  style={{
-                                    marginLeft: 6,
-                                    fontSize: 10,
-                                    color: "var(--teal)",
-                                  }}
-                                >
-                                  YOU
-                                </span>
-                              )}
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: "'DM Mono',monospace",
-                                fontSize: 15,
-                                fontWeight: 700,
-                                color: i < 3 ? "var(--amber)" : "var(--text)",
-                              }}
-                            >
-                              {p.p}
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {/* ── ADMIN ── */} {/* ── ADMIN ── */}
               {view === "admin" && ADMIN_IDS.includes(user.id) && (
                 <div className="fadeIn">
@@ -3867,26 +4812,25 @@ export default function App() {
                     return (
                       <div
                         key={m.id}
+                        className="glass-panel glass-panel-hover"
                         style={{
-                          background: "var(--panel)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 14,
-                          padding: "14px 18px",
-                          marginBottom: 10,
+                          padding: "16px 20px",
+                          marginBottom: 12,
                           display: "flex",
                           alignItems: "center",
-                          gap: 12,
+                          gap: 14,
                         }}
                       >
-                        <Avatar name={m.name} size={36} />
+                        <Avatar name={m.name} size={40} />
                         <div style={{ flex: 1 }}>
                           <div
                             style={{
-                              fontWeight: 600,
-                              fontSize: 13,
+                              fontWeight: 800,
+                              fontSize: 14,
                               display: "flex",
                               alignItems: "center",
-                              gap: 6,
+                              gap: 8,
+                              color: "var(--text)",
                             }}
                           >
                             {m.name}
@@ -3897,12 +4841,12 @@ export default function App() {
                                 title="Has flagged attempt"
                                 style={{
                                   fontSize: 9,
-                                  background: "rgba(239,68,68,0.15)",
+                                  background: "var(--red-dim)",
                                   color: "var(--red)",
-                                  border: "1px solid rgba(239,68,68,0.3)",
-                                  padding: "1px 6px",
-                                  borderRadius: 10,
-                                  fontFamily: "'DM Mono',monospace",
+                                  border: "1px solid rgba(244,63,94,0.3)",
+                                  padding: "2px 8px",
+                                  borderRadius: 12,
+                                  fontFamily: "var(--font-mono)",
                                   letterSpacing: "0.08em",
                                   fontWeight: 700,
                                 }}
@@ -3913,18 +4857,19 @@ export default function App() {
                           </div>
                           <div
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               color: "var(--text-faint)",
-                              fontFamily: "'DM Mono',monospace",
-                              marginTop: 2,
+                              fontFamily: "var(--font-mono)",
+                              marginTop: 3,
                             }}
                           >
-                            {count} tests · {pts} pts
+                            {count} test{count !== 1 ? "s" : ""} · {pts} pt{pts !== 1 ? "s" : ""}
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             className="btn-ghost"
+                            style={{ padding: "9px 14px", borderRadius: 10, fontSize: 11, fontWeight: 700 }}
                             onClick={() => {
                               const hist = results.filter(
                                 (r) => r.userId === m.id
@@ -3952,15 +4897,24 @@ export default function App() {
                           </button>
                           <button
                             style={{
-                              background: "none",
-                              border: "1px solid rgba(239,68,68,0.4)",
+                              background: "rgba(244,63,94,0.08)",
+                              border: "1px solid rgba(244,63,94,0.3)",
                               color: "var(--red)",
-                              padding: "8px 12px",
-                              borderRadius: 8,
+                              padding: "9px 14px",
+                              borderRadius: 10,
                               fontSize: 11,
-                              fontWeight: 600,
+                              fontWeight: 700,
                               cursor: "pointer",
                               letterSpacing: "0.04em",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "var(--red)";
+                              e.currentTarget.style.color = "#fff";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "rgba(244,63,94,0.08)";
+                              e.currentTarget.style.color = "var(--red)";
                             }}
                             onClick={async () => {
                               if (
